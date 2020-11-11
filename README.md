@@ -30,7 +30,7 @@
 ## :cloud: 网络 
 
 - [计算机网络](https://github.com/CyC2018/CS-Notes/blob/master/notes/计算机网络%20-%20目录.md)
-- [HTTP](https://github.com/CyC2018/CS-Notes/blob/master/notes/HTTP.md)
+- [HTTP](https://github.com/Oliver-zou/Notes/tree/master/notes/network/HTTP.md)
 - [Socket](https://github.com/CyC2018/CS-Notes/blob/master/notes/Socket.md)
 
 ## :floppy_disk: 数据库

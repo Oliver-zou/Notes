@@ -60,6 +60,34 @@
 
 ## 请求和响应报文
 
+用于HTTP协议交互的信息称为报文，是HTTP通信中的基本单位。由报文首部/空行（CR+CL）/报文主体[message body]组成。实体是通信过程中的有效载荷数据，其也有首部和主体（传输的实际信息），实体在报文的主体中，可有多个。
+
+HTTP 报文的报文主体如果存在的话）是用来运载请求或响应的有效载荷主体[payload body]的。除非应用了传输编码，报文主体等价于有效载荷主体。下面以分块传输编码（Chunked transfer encoding）的一个示例来解释
+
+```
+HTTP/1.1 200 OK
+Content-Type: text/plain
+Transfer-Encoding: chunked
+
+25
+This is the data in the first chunk
+
+1C
+and this is the second one
+
+3
+con
+
+8
+sequence
+
+0
+```
+
+示例中的有效载荷主体（payload body）为 This is the data in the first chunk、and this is the second one、con 和 sequence 这几行。而报文主体（message body）为第一个空行以后的所有部分，除了有效载荷主体之外，还包括了 25、1C 等行和几个空行（最后为“0/r/n/r/n”，此处显示有误）。
+
+
+
 客户端发送一个请求报文给服务器，服务器根据请求报文中的信息进行处理，并将处理结果放入响应报文中返回给客户端。
 
 请求报文结构：
@@ -122,7 +150,7 @@ X-Cache: HIT
 
 ## URL
 
-http 使用 URL（ **U** niform **R**esource **L**ocator，统一资源定位符）来定位资源，它可以认为是是  URI（**U**niform **R**esource **I**dentifier，统一资源标识符）的一个子集，URL 在 URI 的基础上增加了定位能力。URI 除了包含 URL 之外，还包含 URN（Uniform Resource Name，统一资源名称），它知识用来定义一个资源的名称，并不具备定位该资源的能力。例如 urn:isbn:0451450523 用来定义一个书籍，但是却没有表示怎么找到这本书。
+http 使用 URL（ **U** niform **R**esource **L**ocator，统一资源定位符）来定位资源，它可以认为是  URI（**U**niform **R**esource **I**dentifier，统一资源标识符）的一个子集，URL 在 URI 的基础上增加了定位能力。URI 除了包含 URL 之外，还包含 URN（Uniform Resource Name，统一资源名称），它知识用来定义一个资源的名称，并不具备定位该资源的能力。例如 urn:isbn:0451450523 用来定义一个书籍，但是却没有表示怎么找到这本书。
 
 <div align="center"> <img src="https://cs-notes-1256109796.cos.ap-guangzhou.myqcloud.com/8441b2c4-dca7-4d6b-8efb-f22efccaf331.png" width="500px"> </div><br>
 
@@ -133,7 +161,9 @@ http 使用 URL（ **U** niform **R**esource **L**ocator，统一资源定位符
 
 # 二、HTTP 方法
 
-客户端发送的   **请求报文**   第一行为请求行，包含了方法字段。
+客户端发送的   **请求报文**   第一行为请求行，包含了方法/URI/HTTP版本字段。
+
+服务端发送的   **响应报文**   第一行为响应行，包含了状态码/HTTP版本字段。
 
 ## GET
 
