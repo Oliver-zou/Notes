@@ -38,7 +38,9 @@
 - [SQL 语法](https://github.com/CyC2018/CS-Notes/blob/master/notes/SQL%20语法.md)
 - [SQL 练习](https://github.com/CyC2018/CS-Notes/blob/master/notes/SQL%20练习.md)
 - [MySQL](https://github.com/CyC2018/CS-Notes/blob/master/notes/MySQL.md)
-- [Redis](https://github.com/CyC2018/CS-Notes/blob/master/notes/Redis.md)
+- [Rediso](https://github.com/CyC2018/CS-Notes/blob/master/notes/Redis.md)
+
+## :mouse: Go
 
 ## :coffee: Java
 
