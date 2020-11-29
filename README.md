@@ -42,13 +42,15 @@
 
 ## :mouse: Go
 
+- [GO的疑问](https://github.com/Oliver-zou/Notes/blob/master/notes/GO/GO%E7%9A%84%E7%96%91%E9%97%AE.md)
+
 ## :coffee: Java
 
-- [Java 基础](https://github.com/CyC2018/CS-Notes/blob/master/notes/Java%20基础.md)
-- [Java 容器](https://github.com/CyC2018/CS-Notes/blob/master/notes/Java%20容器.md)
-- [Java 并发](https://github.com/CyC2018/CS-Notes/blob/master/notes/Java%20并发.md)
-- [Java 虚拟机](https://github.com/CyC2018/CS-Notes/blob/master/notes/Java%20虚拟机.md)
-- [Java I/O](https://github.com/CyC2018/CS-Notes/blob/master/notes/Java%20IO.md)
+- [Java 基础](ttps://github.com/Oliver-zou/Notes/blob/master/notes/java/Java%20基础.md)
+- [Java 容器](ttps://github.com/Oliver-zou/Notes/blob/master/notes/java/Java%20容器.md)
+- [Java 并发](ttps://github.com/Oliver-zou/Notes/blob/master/notes/java/Java%20并发.md)
+- [Java 虚拟机](ttps://github.com/Oliver-zou/Notes/blob/master/notes/java/Java%20虚拟机.md)
+- [Java I/O](https://github.com/Oliver-zou/Notes/blob/master/notes/java/Java%20IO.md)
 
 ## :bulb: 系统设计 
 
@@ -94,4 +96,3 @@
 
 Logo：[logomakr](https://logomakr.com/)
 
-<a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/"><img alt="知识共享许可协议" style="border-width:0" src="https://i.creativecommons.org/l/by-nc-sa/4.0/88x31.png" /></a>
