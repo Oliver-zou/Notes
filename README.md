@@ -46,10 +46,10 @@
 
 ## :coffee: Java
 
-- [Java 基础](ttps://github.com/Oliver-zou/Notes/blob/master/notes/java/Java%20基础.md)
-- [Java 容器](ttps://github.com/Oliver-zou/Notes/blob/master/notes/java/Java%20容器.md)
-- [Java 并发](ttps://github.com/Oliver-zou/Notes/blob/master/notes/java/Java%20并发.md)
-- [Java 虚拟机](ttps://github.com/Oliver-zou/Notes/blob/master/notes/java/Java%20虚拟机.md)
+- [Java 基础](https://github.com/Oliver-zou/Notes/blob/master/notes/java/Java%20基础.md)
+- [Java 容器](https://github.com/Oliver-zou/Notes/blob/master/notes/java/Java%20容器.md)
+- [Java 并发](https://github.com/Oliver-zou/Notes/blob/master/notes/java/Java%20并发.md)
+- [Java 虚拟机](https://github.com/Oliver-zou/Notes/blob/master/notes/java/Java%20虚拟机.md)
 - [Java I/O](https://github.com/Oliver-zou/Notes/blob/master/notes/java/Java%20IO.md)
 
 ## :bulb: 系统设计 
