@@ -33,38 +33,43 @@
     * [toString()](#tostring)
     * [clone()](#clone)
     
-* [六、封装](#六继承)
+* [六、面向对象三大特征-封装](#六面向对象三大特征-封装)
   
     * [访问权限](#访问权限)
     
-* [七、继承](#七继承)
+* [七、面向对象三大特征-继承](#七面向对象三大特征-继承)
 
     * [概述](#概述)
-    * [抽象类与接口](#抽象类与接口)
     * [super](#super)
     * [this](#this)
+    * [继承的特点](#继承的特点)
 
-* [八、多态](#八多态)
+* 八、[抽象类与接口](#抽象类与接口)
+
+    - [抽象类](#抽象类)
+    - [接口](#接口)
+
+* [九、面向对象三大特征-多态](#九面向对象三大特征-多态)
 
     * [概述](#概述)
     * [重写与重载](#重写与重载)
 
-* [九、反射](#九反射)
+* [十、反射](#十反射)
 
-* [十、异常](#十异常)
+* [十一、异常](#十一异常)
 
-* [十一、泛型](#十一泛型)
+* [十二、泛型](#十二泛型)
 
-* [十二、注解](#十二注解)
+* [十三、注解](#十三注解)
 
-* [十三、特性](#十三特性)
-  
+* [十四、特性](#十四特性)
+
     * [Java 各版本的新特性](#java-各版本的新特性)
     * [Java 与 C++ 的区别](#java-与-c-的区别)
     * [JRE or JDK](#jre-or-jdk)
-    
+
 * [参考资料](#参考资料)
-<!-- GFM-TOC -->
+  <!-- GFM-TOC -->
 
 
 # 一、数据类型
@@ -1227,7 +1232,7 @@ e1.set(2, 222);
 System.out.println(e2.get(2)); // 2
 ```
 
-# 六、封装
+# 六、面向对象三大特征-封装
 
 方法和关键字均是封装特性的体现：将细节信息隐藏，对外界不可见，只管调用。
 
@@ -1292,7 +1297,7 @@ public class AccessWithInnerClassExample {
 }
 ```
 
-# 七、继承
+# 七、面向对象三大特征-继承
 
 ## 变量与方法
 
@@ -1433,116 +1438,6 @@ public class 子类名称 extends 父类名称 {
   }
   ```
 
-## 构造方法
-
-## 抽象类与接口
-
-**1. 抽象类**  
-
-抽象类和抽象方法都使用 abstract 关键字进行声明。如果一个类中包含抽象方法，那么这个类必须声明为抽象类。
-
-抽象类和普通类最大的区别是，抽象类不能被实例化，只能被继承。
-
-```java
-public abstract class AbstractClassExample {
-
-    protected int x;
-    private int y;
-
-    public abstract void func1();
-
-    public void func2() {
-        System.out.println("func2");
-    }
-}
-```
-
-```java
-public class AbstractExtendClassExample extends AbstractClassExample {
-    @Override
-    public void func1() {
-        System.out.println("func1");
-    }
-}
-```
-
-```java
-// AbstractClassExample ac1 = new AbstractClassExample(); // 'AbstractClassExample' is abstract; cannot be instantiated
-AbstractClassExample ac2 = new AbstractExtendClassExample();
-ac2.func1();
-```
-
-**2. 接口**  
-
-接口是抽象类的延伸，在 Java 8 之前，它可以看成是一个完全抽象的类，也就是说它不能有任何的方法实现。
-
-从 Java 8 开始，接口也可以拥有默认的方法实现，这是因为不支持默认方法的接口的维护成本太高了。在 Java 8 之前，如果一个接口想要添加新的方法，那么要修改所有实现了该接口的类，让它们都实现新增的方法。
-
-接口的成员（字段 + 方法）默认都是 public 的，并且不允许定义为 private 或者 protected。从 Java 9 开始，允许将方法定义为 private，这样就能定义某些复用的代码又不会把方法暴露出去。
-
-接口的字段默认都是 static 和 final 的。
-
-```java
-public interface InterfaceExample {
-
-    void func1();
-
-    default void func2(){
-        System.out.println("func2");
-    }
-
-    int x = 123;
-    // int y;               // Variable 'y' might not have been initialized
-    public int z = 0;       // Modifier 'public' is redundant for interface fields
-    // private int k = 0;   // Modifier 'private' not allowed here
-    // protected int l = 0; // Modifier 'protected' not allowed here
-    // private void fun3(); // Modifier 'private' not allowed here
-}
-```
-
-```java
-public class InterfaceImplementExample implements InterfaceExample {
-    @Override
-    public void func1() {
-        System.out.println("func1");
-    }
-}
-```
-
-```java
-// InterfaceExample ie1 = new InterfaceExample(); // 'InterfaceExample' is abstract; cannot be instantiated
-InterfaceExample ie2 = new InterfaceImplementExample();
-ie2.func1();
-System.out.println(InterfaceExample.x);
-```
-
-**3. 比较**  
-
-- 从设计层面上看，抽象类提供了一种 IS-A 关系，需要满足里式替换原则，即子类对象必须能够替换掉所有父类对象。而接口更像是一种 LIKE-A 关系，它只是提供一种方法实现契约，并不要求接口和实现接口的类具有 IS-A 关系。
-- 从使用上来看，一个类可以实现多个接口，但是不能继承多个抽象类。
-- 接口的字段只能是 static 和 final 类型的，而抽象类的字段没有这种限制。
-- 接口的成员只能是 public 的，而抽象类的成员可以有多种访问权限。
-
-**4. 使用选择**  
-
-使用接口：
-
-- 需要让不相关的类都实现一个方法，例如不相关的类都可以实现 Comparable 接口中的 compareTo() 方法；
-- 需要使用多重继承。
-
-使用抽象类：
-
-- 需要在几个相关的类中共享代码。
-- 需要能控制继承来的成员的访问权限，而不是都为 public。
-- 需要继承非静态和非常量字段。
-
-在很多情况下，接口优先于抽象类。因为接口没有抽象类严格的类层次结构要求，可以灵活地为一个类添加行为。并且从 Java 8 开始，接口也可以有默认的方法实现，使得修改接口的成本也变的很低。
-
-- [Abstract Methods and Classes](https://docs.oracle.com/javase/tutorial/java/IandI/abstract.html)
-- [深入理解 abstract class 和 interface](https://www.ibm.com/developerworks/cn/java/l-javainterface-abstract/)
-- [When to Use Abstract Class and Interface](https://dzone.com/articles/when-to-use-abstract-class-and-intreface)
-- [Java 9 Private Methods in Interfaces](https://www.journaldev.com/12850/java-9-private-methods-interfaces)
-
 
 ## super
 
@@ -1553,7 +1448,7 @@ System.out.println(InterfaceExample.x);
 
 - 继承关系中，父子类构造方法的访问特点：
 
-  1. 可以使用 super() 函数访问父类的构造函数，从而委托父类完成一些初始化的工作。应该注意到，子类一定会调用父类的构造函数来完成初始化工作，一般是调用父类的默认构造函数(隐含的“super()”调用)。
+  1. 可以使用 super() 函数访问父类的构造函数，从而委托父类完成一些初始化的工作。应该注意到，**子类一定会调用父类的构造函数来完成初始化工作，一般是调用父类的默认构造函数(隐含的“super()”调用)**。
 
      如果子类需要调用父类其它构造函数，那么就可以使用 super() 函数。所以一定是先调用的父类构造，后执行的子类构造。
 
@@ -1666,8 +1561,218 @@ SuperExtendExample.func()
       }
   }
   ```
+  
+  图解this与super
+  
+  <div align="center"> <img src="../../pics/8852d235-0c8e-4d8b-8124-8741633a6cf5.png" width="500"/> </div><br>
 
-# 八、多态
+## 继承的特点
+
+- Java语言是单继承的：一个类的直接父类只有唯一一个
+- Java语言可以多级继承
+- 一个类的直接父类是唯一的，但一个父类可以拥有很多个子类
+
+<div align="center"> <img src="../../pics/c1e16f34-aa4e-4fd1-91ff-ee58abc04f83.png" width="500"/> </div><br>
+
+# 八、面向对象三大特征-抽象类与接口
+
+## 抽象类
+
+**1. 概述**
+
+抽象方法：就是加上abstract关键字，然后去掉大括号，直接分号结束。
+抽象类：抽象方法所在的类，必须是抽象类才行。在class之前写上abstract即可。
+
+```
+<div align="center"> <img src="../../pics/01ac6074-e1c3-4806-83f0-11965d882d0c.png" width="500"/> </div><br>
+```
+
+如何使用抽象类和抽象方法：
+1. 不能直接创建new抽象类对象。
+
+2. 必须用一个子类来继承抽象父类。
+
+3. 子类必须覆盖重写抽象父类当中所有的抽象方法。
+  覆盖重写（实现）：子类去掉抽象方法的abstract关键字，然后补上方法体大括号。
+
+4. 创建子类对象进行使用。
+
+   ```java
+   public abstract class Animal {
+   
+       // 这是一个抽象方法，代表吃东西，但是具体吃什么（大括号的内容）不确定。
+       public abstract void eat();
+   
+       // 这是普通的成员方法
+   //    public void normalMethod() {
+   //    }
+   }
+   ```
+
+注意事项
+
+1. 抽象类不能创建对象，创建编译无法通过而报错。只能创建其非抽象子类的对象。
+2. 抽象类中，可以有构造方法，是供子类创建对象时初始化非类成员使用的。
+3. 抽象类中，不一定包含抽象方法（适配器模式可用），但是有抽象方法的类必定是抽象类。
+4. 抽象类的子类，必须重写抽象父类中所有的抽象方法。否则，编译无法通过而报错，除非该子类也是抽象类。
+
+**2. 抽象类**
+
+抽象类和抽象方法都使用 abstract 关键字进行声明。如果一个类中包含抽象方法，那么这个类必须声明为抽象类。
+
+抽象类和普通类最大的区别是，抽象类不能被实例化，只能被继承。
+
+```java
+public abstract class AbstractClassExample {
+
+    protected int x;
+    private int y;
+
+    public abstract void func1();
+
+    public void func2() {
+        System.out.println("func2");
+    }
+}
+```
+
+```java
+public class AbstractExtendClassExample extends AbstractClassExample {
+    @Override
+    public void func1() {
+        System.out.println("func1");
+    }
+}
+```
+
+```java
+// AbstractClassExample ac1 = new AbstractClassExample(); // 'AbstractClassExample' is abstract; cannot be instantiated
+AbstractClassExample ac2 = new AbstractExtendClassExample();
+ac2.func1();
+```
+
+
+
+## 接口
+
+**1. 概述**
+
+- 接口是抽象类的延伸，接口就是多个类的公共规范。接口是一种引用数据类型，最重要的内容就是其中的：抽象方法。
+
+- 接口的格式：
+
+  ```java
+  public interface 接口名称 {
+      // 接口内容
+  }
+  ```
+
+  备注：换成了关键字interface之后，编译生成的字节码文件仍然是：.java --> .class。
+
+- 如果是Java 7，那么接口中可以包含的内容有：常量    抽象方法
+
+- 如果是Java 8，还可以额外包含有：默认方法    静态方法
+
+  在 Java 8 之前，它可以看成是一个完全抽象的类，也就是说它不能有任何的方法实现。
+
+  从 Java 8 开始，接口也可以拥有默认的方法实现，这是因为不支持默认方法的接口的维护成本太高了。在 Java 8 之前，如果一个接口想要添加新的方法，那么要修改所有实现了该接口的类，让它们都实现新增的方法。
+
+- 如果是Java 9，还可以额外包含有：私有方法
+
+  接口的成员（字段 + 方法）默认都是 public 的，并且不允许定义为 private 或者 protected。从 Java 9 开始，允许将方法定义为 private，这样就能定义某些复用的代码又不会把方法暴露出去。
+
+- 接口使用步骤：
+
+  1. 接口不能直接使用，必须有一个“实现类”来“实现”该接口。
+     格式：
+
+     ```java
+     public class 实现类名称 implements 接口名称 {
+      // ...
+     }
+     ```
+
+  2. 接口的实现类必须覆盖重写（实现）接口中所有的抽象方法。
+     实现：去掉abstract关键字，加上方法体大括号。
+
+  3. 创建实现类的对象，进行使用。
+
+- 注意事项：
+
+  如果实现类并没有覆盖重写接口中所有的抽象方法，那么这个实现类自己就必须是抽象类。
+
+  接口的字段默认都是 static 和 final 的。
+
+```java
+public interface InterfaceExample {
+
+    void func1();
+
+    default void func2(){
+        System.out.println("func2");
+    }
+
+    int x = 123;
+    // int y;               // Variable 'y' might not have been initialized
+    public int z = 0;       // Modifier 'public' is redundant for interface fields
+    // private int k = 0;   // Modifier 'private' not allowed here
+    // protected int l = 0; // Modifier 'protected' not allowed here
+    // private void fun3(); // Modifier 'private' not allowed here
+}
+```
+
+```java
+public class InterfaceImplementExample implements InterfaceExample {
+    @Override
+    public void func1() {
+        System.out.println("func1");
+    }
+}
+```
+
+```java
+// InterfaceExample ie1 = new InterfaceExample(); // 'InterfaceExample' is abstract; cannot be instantiated
+InterfaceExample ie2 = new InterfaceImplementExample();
+ie2.func1();
+System.out.println(InterfaceExample.x);
+```
+
+**2. 例子**
+
+
+
+
+
+**比较**  
+
+- 从设计层面上看，抽象类提供了一种 IS-A 关系，需要满足里式替换原则，即子类对象必须能够替换掉所有父类对象。而接口更像是一种 LIKE-A 关系，它只是提供一种方法实现规范，并不要求接口和实现接口的类具有 IS-A 关系。
+- 从使用上来看，一个类可以实现多个接口，但是不能继承多个抽象类。
+- 接口的字段只能是 static 和 final 类型的，而抽象类的字段没有这种限制。
+- 接口的成员只能是 public 的，而抽象类的成员可以有多种访问权限。
+
+**4. 使用选择**  
+
+使用接口：
+
+- 需要让不相关的类都实现一个方法，例如不相关的类都可以实现 Comparable 接口中的 compareTo() 方法；
+- 需要使用多重继承。
+
+使用抽象类：
+
+- 需要在几个相关的类中共享代码。
+- 需要能控制继承来的成员的访问权限，而不是都为 public。
+- 需要继承非静态和非常量字段。
+
+在很多情况下，接口优先于抽象类。因为接口没有抽象类严格的类层次结构要求，可以灵活地为一个类添加行为。并且从 Java 8 开始，接口也可以有默认的方法实现，使得修改接口的成本也变的很低。
+
+- [Abstract Methods and Classes](https://docs.oracle.com/javase/tutorial/java/IandI/abstract.html)
+- [深入理解 abstract class 和 interface](https://www.ibm.com/developerworks/cn/java/l-javainterface-abstract/)
+- [When to Use Abstract Class and Interface](https://dzone.com/articles/when-to-use-abstract-class-and-intreface)
+- [Java 9 Private Methods in Interfaces](https://www.journaldev.com/12850/java-9-private-methods-interfaces)
+
+# 九、多态
+
+## 概述
 
 继承是多态的前提，如果没有继承也就没有多态。
 
@@ -1803,7 +1908,7 @@ public static void main(String[] args) {
 }
 ```
 
-# 九、反射
+# 十、反射
 
 每个类都有一个   **Class**   对象，包含了与类有关的信息。当编译一个新类时，会产生一个同名的 .class 文件，该文件内容保存着 Class 对象。
 
@@ -1837,7 +1942,7 @@ Class 和 java.lang.reflect 一起对反射提供了支持，java.lang.reflect �
 - [Trail: The Reflection API](https://docs.oracle.com/javase/tutorial/reflect/index.html)
 - [深入解析 Java 反射（1）- 基础](http://www.sczyh30.com/posts/Java/java-reflection-1/)
 
-# 十、异常
+# 十一、异常
 
 Throwable 可以用来表示任何可以作为异常抛出的类，分为两种：  **Error**   和 **Exception**。其中 Error 用来表示 JVM 无法处理的错误，Exception 分为两种：
 
@@ -1849,7 +1954,7 @@ Throwable 可以用来表示任何可以作为异常抛出的类，分为两种�
 - [Java 入门之异常处理](https://www.cnblogs.com/Blue-Keroro/p/8875898.html)
 - [Java Exception Interview Questions and Answers](https://www.journaldev.com/2167/java-exception-interview-questions-and-answersl)
 
-# 十一、泛型
+# 十二、泛型
 
 泛型只能是引用类型不能是基本类型。因为基本类型没有地址值，集合里存的都是地址值。如果想存基本数据类型：
 
@@ -1886,7 +1991,7 @@ public class Box<T> {
 - [Java 泛型详解](http://www.importnew.com/24029.html)
 - [10 道 Java 泛型面试题](https://cloud.tencent.com/developer/article/1033693)
 
-# 十二、注解
+# 十三、注解
 
 Java 注解是附加在代码中的一些元信息，用于一些工具在编译、运行时进行解析和使用，起到说明、配置的功能。注解不会也不能影响代码的实际逻辑，仅仅起到辅助性的作用。
 
