@@ -18,28 +18,28 @@
 
 1.1 概念
 
-**RPC**(Remote Procedure Call)：远程过程调用，是一种计算机通信协议。该协议允许运行于一台计算机的程序调用另一台计算机的子程序，而程序员无需额外地为这个交互作用编程。可接地气的表述为：计算机A提供一个服务，计算机B可以像调用本地服务那样调用计算机A的服务，在该过程中参数的传递是一个序列化和反序列化的过程。
+**RPC**(Remote Procedure Call)：远程过程调用，是一种计算机通信协议。该协议允许运行于一台计算机的程序调用另一台计算机的子程序：计算机A提供一个服务，计算机B可以像调用本地服务那样调用计算机A的服务，在该过程中参数的传递是一个序列化和反序列化的过程。
 
 <div align="center"> <img src="../../pics/16067222356178.png" width="500px"> </div><br>
 
 1.2 RPC与HTTP的对比
 
-|                      | RPC  |                 HTTP                  |
-| :------------------: | :--: | :-----------------------------------: |
-|         格式         | 灵活 |                 统一                  |
-|        通用性        |  弱  | 强，没有规定API和语言，跨语言、跨平台 |
-| 是否需要关注实现语言 |  是  |        否，只需要遵循rest规范         |
-|         速度         | 更快 |   较慢，http协议的信息往往比较臃肿    |
+|                          | RPC  |                 HTTP                  |
+| :----------------------: | :--: | :-----------------------------------: |
+|         **格式**         | 灵活 |                 统一                  |
+|        **通用性**        |  弱  | 强，没有规定API和语言，跨语言、跨平台 |
+| **是否需要关注实现语言** |  是  |        否，只需要遵循rest规范         |
+|         **速度**         | 更快 |     较慢，http协议的信息比较臃肿      |
 
 ## 2.gRPC
 
 2.1 概念
 
-gRPC 是一个高性能、开源和通用的 RPC 框架，面向移动和 HTTP/2 设计，带来诸如双向流、流控、头部压缩、单 TCP 连接上的多复用请求等特。这些特性使得其在移动设备上表现更好，更省电和节省空间占用。此外，该框架 支持多种语言开发，该框架具有以下特点：
+gRPC 是Google开发的一款高性能、开源通用的 RPC 框架，其主要面向移动应用开发并基于HTTP/2协议标准而设计，基于ProtoBuf(Protocol Buffers)序列化协议开发，且支持众多开发语言。该框架具有以下特点：
 
-- Protobuf进行数据编码，提高数据压缩率
-- 使用HTTP2.0弥补了HTTP1.1的不足
-- 同样在调用方和服务方使用协议约定文件，提供参数可选，为版本兼容留下缓冲空间
+- ProtoBuf作为IDL进行数据编码，提高数据压缩率
+- 使用HTTP2.0弥补HTTP1.1的不足之处
+- 对于调用方和服务方的协议，所提供参数的为可选（版本兼容）
 
 <div align="center"> <img src="../../pics/16067211954087.png" width="500px"> </div><br>
 
@@ -85,7 +85,7 @@ rpc BidiHello(stream HelloRequest) returns (stream HelloResponse){
 
 3.1 概念
 
-gRPC 默认使用 protocol buffers，这是 Google 开源的一套成熟的结构数据序列化机制（当然也可以使用其他数据格式如 JSON）。使用 protocol buffers 消息类型来定义方法参数和返回类型，具体协议格式可参照 [Protocol Buffers 文档](https://developers.google.com/protocol-buffers/docs/overview)。建议[proto3 ]((http://doc.oschina.net/https：//developers.google.com/protocol-buffers/docs/proto3))版本的 protocol buffers较多，它拥有轻量简化的语法、一些有用的新功能，并且支持更多新语言，可兼容默认的proto2。
+gRPC 默认使用 protocol buffers，这是 Google 开源的一套成熟的结构数据序列化机制（也可以使用其他数据格式，如 JSON）。使用 protocol buffers 消息类型来定义方法参数和返回类型，具体协议格式可参照 [Protocol Buffers 文档](https://developers.google.com/protocol-buffers/docs/overview)。建议使用[proto3 ]((http://doc.oschina.net/https：//developers.google.com/protocol-buffers/docs/proto3))版本的 protocol buffers，它拥有轻量简化的语法、一些有用的新功能，并且支持更多新语言，可兼容默认的proto2。
 
 3.2 特点
 
@@ -100,19 +100,18 @@ gRPC 默认使用 protocol buffers，这是 Google 开源的一套成熟的结�
 
   ```protobuf
   // 指定使用proto3，如果不指定的话，编译器会使用proto2去编译
-  syntax = "proto3"; //[proto2|proto3]
+  syntax = "proto3";
   package pb; // 包名
   
   message SearchRequests {
       // 定义SearchRequests的成员变量，需要指定：变量类型、变量名、变量Tag
       // 消息定义中的每个字段都有一个唯一的编号。这些数字用于标识消息二进制格式的字段
-      // 
       string query = 1;
       int32 page_number = 2;
       int32 result_per_page = 3;
   }
   ```
-
+  
 - 定义多个message类型
 
   ```protobuf
@@ -140,7 +139,7 @@ gRPC 默认使用 protocol buffers，这是 Google 开源的一套成熟的结�
    go get -u google.golang.org/grpc
    ```
 
-2. 安装proto, protoc-gen-go（protoc的Go插件）
+2. 安装proto和protoc-gen-go(protoc的Go插件)
 
    ```shell
    go get -u github.com/golang/protobuf/{proto,protoc-gen-go}
@@ -181,7 +180,7 @@ gRPC 默认使用 protocol buffers，这是 Google 开源的一套成熟的结�
 
 # 三、Demo
 
-本节已Golang语言的官方Demo（gRPC Hello World）进行说明，[代码连接](https://github.com/grpc/grpc-go/tree/master/examples)。多种响应方式Demo可详见[grpc/grpc-go/examples/cpp/route_guide](https://github.com/grpc/grpc-go/tree/master/examples/route_guide)
+本节选用Golang语言的官方Demo（gRPC Hello World）进行说明，[代码连接](https://github.com/grpc/grpc-go/tree/master/examples)。多种响应方式Demo可详见[grpc/grpc-go/examples/cpp/route_guide](https://github.com/grpc/grpc-go/tree/master/examples/route_guide)
 
 1. 定义PB协议，使用命令`protoc --go_out=./ helloworld.proto` 生成 helloworld.pb.go
 
@@ -316,7 +315,7 @@ gRPC 默认使用 protocol buffers，这是 Google 开源的一套成熟的结�
    db2struct --host $yourhost -d $dbname -t $tbname --struct $stname -p $yourpasswd --user=$user --guregu --gorm
    ```
 
-3. [mysql-protobuf](https://github.com/google/mysql-protobuf)：讲mysql库表中的字段生成protoco buf的messag。
+3. [mysql-protobuf](https://github.com/google/mysql-protobuf)：将mysql库表中的字段生成ProtoBuf的messag。
 
 
 
@@ -325,4 +324,6 @@ gRPC 默认使用 protocol buffers，这是 Google 开源的一套成熟的结�
 http://doc.oschina.net/grpc?t=58008
 
 http://doc.oschina.net/grpc?t=60133
+
+https://smallnest.gitbooks.io/go-rpc-programming-guide/content/
 

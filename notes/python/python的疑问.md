@@ -140,17 +140,13 @@ Module(body=[Assign(
 
 总结：
 
-- 装饰器就像装箱，装的时候先打包里面的，再打包外层的，打开的时候，先拆外面的再拆里面的，这里b是外层a是里层，这就是3-7行的原因。
+装饰器就像装箱，装的时候先打包里面的，再打包外层的，打开的时候，先拆外面的再拆里面的，这里b是外层a是里层，这就是3-7行的原因。
 
-  但第1行第2行不是装饰器，是生产装饰器的过程，生成顺序按代码中出现的顺序。
+但第1行第2行不是装饰器，是生产装饰器的过程，生成顺序按代码中出现的顺序。
 
-  ```
-  @decorator_b(name="myname")
-  @decorator_a(age=10)
-  ```
+```
+@decorator_b(name="myname")
+@decorator_a(age=10)
+```
 
-​		这里decorator_b(name="myname") 是个函数调用，它的返回值才是作为装饰器（箱子）包装到my函数		上，所以它们是在Python解释这个文件时就立刻执行了，解释的顺序自然是从上到下。
-
-- 简单来说，就是代码运行后先调用函数decorator_b，所以第一行打印in decorator_b； 之后会调用decorator_a, 所以第二行打印in decorator_a.看这里: [pythontutor](http://www.pythontutor.com/visualize.html#code=def decorator_a(**args)%3A        print("in decorator_a")         def _(func)%3A                print("in decorator_a _")                 def wrapper_func(*i, **ki)%3A                        print("in decorator_a _ wrapper_func")                        return func(*i,**ki)                 return wrapper_func         return _  def decorator_b(**args)%3A        print("in decorator_b")         def _(func)%3A                print("in decorator_b _")                 def wrapper_func(*i, **ki)%3A                        print("in decorator_b _ wrapper_func")                        return func(*i, **ki)                 return wrapper_func         return _  %40decorator_b(name%3D"myname") %40decorator_a(age%3D10) def my(a, b)%3A        print("in my {0}, {1}".format(a, b)) 
-
-<div align="center"> <img src="../../pics/16067064873945.png" width="500px"/> </div><br>
+这里decorator_b(name="myname") 是个函数调用，它的返回值才是作为装饰器（箱子）包装到my函数上，所以它们是在Python解释这个文件时就立刻执行了，解释的顺序自然是从上到下。
