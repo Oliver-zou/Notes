@@ -8,12 +8,12 @@
 - [2.map chan](#2-map chan)
   
   ​    
-  
-    <!-- GFM-TOC -->
+
+  <!-- GFM-TOC -->
 
 # 一 、赋值
 
-问题1.
+**问题1.基础类型和定义类型**
 
 ```go
 type A int
