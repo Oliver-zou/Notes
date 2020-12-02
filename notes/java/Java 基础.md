@@ -1574,7 +1574,7 @@ SuperExtendExample.func()
 
 <div align="center"> <img src="../../pics/c1e16f34-aa4e-4fd1-91ff-ee58abc04f83.png" width="500"/> </div><br>
 
-# 八、面向对象三大特征-抽象类与接口
+# 八、抽象类与接口
 
 ## 抽象类
 
@@ -1583,9 +1583,7 @@ SuperExtendExample.func()
 抽象方法：就是加上abstract关键字，然后去掉大括号，直接分号结束。
 抽象类：抽象方法所在的类，必须是抽象类才行。在class之前写上abstract即可。
 
-```
 <div align="center"> <img src="../../pics/01ac6074-e1c3-4806-83f0-11965d882d0c.png" width="500"/> </div><br>
-```
 
 如何使用抽象类和抽象方法：
 1. 不能直接创建new抽象类对象。
@@ -1593,7 +1591,7 @@ SuperExtendExample.func()
 2. 必须用一个子类来继承抽象父类。
 
 3. 子类必须覆盖重写抽象父类当中所有的抽象方法。
-  覆盖重写（实现）：子类去掉抽象方法的abstract关键字，然后补上方法体大括号。
+    覆盖重写（实现）：子类去掉抽象方法的abstract关键字，然后补上方法体大括号。
 
 4. 创建子类对象进行使用。
 
@@ -1681,6 +1679,41 @@ ac2.func1();
 
   接口的成员（字段 + 方法）默认都是 public 的，并且不允许定义为 private 或者 protected。从 Java 9 开始，允许将方法定义为 private，这样就能定义某些复用的代码又不会把方法暴露出去。
 
+- 注意事项
+
+  如果实现类并没有覆盖重写接口中所有的抽象方法，那么这个实现类自己就必须是抽象类。
+
+  
+
+- 在任何版本的Java中，接口都能定义抽象方法。格式：
+
+  public abstract 返回值类型 方法名称(参数列表);
+
+  注意事项：
+
+  1. 接口当中的抽象方法，修饰符必须是两个固定的关键字：public abstract
+  2. 这两个关键字修饰符，可以选择性地省略。
+  3. 方法的三要素，可以随意定义。
+
+  ```java
+  public interface MyInterfaceAbstract {
+  
+      // 这是一个抽象方法
+      public abstract void methodAbs1();
+  
+      // 这也是抽象方法
+      abstract void methodAbs2();
+  
+      // 这也是抽象方法
+      public void methodAbs3();
+  
+      // 这也是抽象方法
+      void methodAbs4();
+  }
+  ```
+
+  
+
 - 接口使用步骤：
 
   1. 接口不能直接使用，必须有一个“实现类”来“实现”该接口。
@@ -1697,53 +1730,310 @@ ac2.func1();
 
   3. 创建实现类的对象，进行使用。
 
-- 注意事项：
+  ```java
+  public class MyInterfaceAbstractImpl implements MyInterfaceAbstract {
+      @Override
+      public void methodAbs1() {
+          System.out.println("这是第一个方法！");
+      }
+  
+      @Override
+      public void methodAbs2() {
+          System.out.println("这是第二个方法！");
+      }
+  
+      @Override
+      public void methodAbs3() {
+          System.out.println("这是第三个方法！");
+      }
+  
+      @Override
+      public void methodAbs4() {
+          System.out.println("这是第四个方法！");
+      }
+  }
+  
+  public class Demo01Interface {
+  
+      public static void main(String[] args) {
+          // 错误写法！不能直接new接口对象使用。
+  //        MyInterfaceAbstract inter = new MyInterfaceAbstract();
+  
+          // 创建实现类的对象使用
+          MyInterfaceAbstractImpl impl = new MyInterfaceAbstractImpl();
+          impl.methodAbs1();
+          impl.methodAbs2();
+      }
+  
+  }
+  ```
 
-  如果实现类并没有覆盖重写接口中所有的抽象方法，那么这个实现类自己就必须是抽象类。
+  
 
-  接口的字段默认都是 static 和 final 的。
+- 从Java 8开始，接口里允许定义默认方法。格式：
 
-```java
-public interface InterfaceExample {
+  ```java
+  public default 返回值类型 方法名称(参数列表) {
+      方法体
+  }
+  ```
 
-    void func1();
+  备注：接口当中的默认方法，可以解决接口升级的问题。
 
-    default void func2(){
-        System.out.println("func2");
+  ```java
+  public interface MyInterfaceDefault {
+  
+      // 抽象方法
+      public abstract void methodAbs();
+  
+      // 新添加了一个抽象方法
+  //    public abstract void methodAbs2();
+  
+      // 新添加的方法，改成默认方法
+      public default void methodDefault() {
+          System.out.println("这是新添加的默认方法");
+      }
+  
+  }
+  
+  // 不受methodDefault方法的影响
+  /*
+  1. 接口的默认方法，可以通过接口实现类对象，直接调用。
+  2. 接口的默认方法，也可以被接口实现类进行覆盖重写。
+   */
+  public class Demo02Interface {
+  
+      public static void main(String[] args) {
+          // 创建了实现类对象
+          MyInterfaceDefaultA a = new MyInterfaceDefaultA();
+          a.methodAbs(); // 调用抽象方法，实际运行的是右侧实现类。
+  
+          // 调用默认方法，如果实现类当中没有，会向上找接口
+          a.methodDefault(); // 这是新添加的默认方法
+      }
+  }
+  ```
+
+
+
+- 从Java 8开始，接口当中允许定义静态方法。格式：
+
+  ```java
+  public static 返回值类型 方法名称(参数列表) {
+      方法体
+  }
+  ```
+
+  提示：就是将abstract或者default换成static即可，带上方法体。
+
+  ```java
+  public interface MyInterfaceStatic {
+  
+      public static void methodStatic() {
+          System.out.println("这是接口的静态方法！");
+      }
+  
+  }
+  
+  public class MyInterfaceStaticImpl implements MyInterfaceStatic {
+  }
+  
+  /*
+  注意事项：不能通过接口实现类的对象来调用接口当中的静态方法。
+  正确用法：通过接口名称，直接调用其中的静态方法。
+  格式：
+  接口名称.静态方法名(参数);
+   */
+  public class Demo03Interface {
+  
+      public static void main(String[] args) {
+          // 创建了实现类对象
+          MyInterfaceStaticImpl impl = new MyInterfaceStaticImpl();
+  
+          // 错误写法！
+  //        impl.methodStatic();
+  
+          // 直接通过接口名称调用静态方法
+          MyInterfaceStatic.methodStatic();
+      }
+  
+  }
+  ```
+
+  
+
+- 我们需要抽取一个共有方法，用来解决两个默认方法之间重复代码的问题。但是这个共有方法不应该让实现类使用，应该是私有化的。解决方案：
+  从Java 9开始，接口当中允许定义私有方法。
+
+  1. 普通私有方法，解决多个默认方法之间重复代码问题，格式：
+
+    ```java
+    private 返回值类型 方法名称(参数列表) {
+     方法体
     }
+    ```
 
-    int x = 123;
-    // int y;               // Variable 'y' might not have been initialized
-    public int z = 0;       // Modifier 'public' is redundant for interface fields
-    // private int k = 0;   // Modifier 'private' not allowed here
-    // protected int l = 0; // Modifier 'protected' not allowed here
-    // private void fun3(); // Modifier 'private' not allowed here
-}
-```
+  2. 静态私有方法，解决多个静态方法之间重复代码问题，格式：
 
-```java
-public class InterfaceImplementExample implements InterfaceExample {
-    @Override
-    public void func1() {
-        System.out.println("func1");
+    ```java
+    private static 返回值类型 方法名称(参数列表) {
+     方法体
     }
-}
-```
+    ```
 
-```java
-// InterfaceExample ie1 = new InterfaceExample(); // 'InterfaceExample' is abstract; cannot be instantiated
-InterfaceExample ie2 = new InterfaceImplementExample();
-ie2.func1();
-System.out.println(InterfaceExample.x);
-```
+  ```java
+  public interface MyInterfacePrivateA {
+  
+      public default void methodDefault1() {
+          System.out.println("默认方法1");
+          methodCommon();
+      }
+  
+      public default void methodDefault2() {
+          System.out.println("默认方法2");
+          methodCommon();
+      }
+  
+      private void methodCommon() {
+          System.out.println("AAA");
+          System.out.println("BBB");
+          System.out.println("CCC");
+      }
+  
+  }
+  
+  public interface MyInterfacePrivateB {
+  
+      public static void methodStatic1() {
+          System.out.println("静态方法1");
+          methodStaticCommon();
+      }
+  
+      public static void methodStatic2() {
+          System.out.println("静态方法2");
+          methodStaticCommon();
+      }
+  
+      private static void methodStaticCommon() {
+          System.out.println("AAA");
+          System.out.println("BBB");
+          System.out.println("CCC");
+      }
+  
+  }
+  
+  public class Demo04Interface {
+  
+      public static void main(String[] args) {
+          MyInterfacePrivateB.methodStatic1();
+          MyInterfacePrivateB.methodStatic2();
+          // 错误写法！
+  //        MyInterfacePrivateB.methodStaticCommon();
+      }
+  
+  }
+  ```
 
-**2. 例子**
 
 
+- 接口当中也可以定义“成员变量”，但是必须使用public static final三个关键字进行修饰。从效果上看，这其实就是接口的【常量】。格式public static final 数据类型 常量名称 = 数据值;
+  备注：一旦使用final关键字进行修饰，说明不可改变。
 
+  注意事项：
+  1. 接口当中的常量，可以省略public static final，注意：不写也照样是这样。
+  2. 接口当中的常量，必须进行赋值；不能不赋值。
+  3. 接口中常量的名称，使用完全大写的字母，用下划线进行分隔。（推荐命名规则）
 
+  ```java
+  public interface MyInterfaceConst {
+  
+      // 这其实就是一个常量，一旦赋值，不可以修改
+      public static final int NUM_OF_MY_CLASS = 12;
+  
+  }
+  
+  public class Demo05Interface {
+  
+      public static void main(String[] args) {
+          // 访问接口当中的常量
+          System.out.println(MyInterfaceConst.NUM_OF_MY_CLASS);
+      }
+  
+  }
+  ```
 
-**比较**  
+**2. 接口的注意事项**
+
+1. 接口是没有静态代码块或者构造方法的。
+
+2. 一个类的直接父类是唯一的（类与类之间是单继承的），但是一个类可以同时实现多个接口（类与接口之间是多实现的）。格式：
+
+  ```java
+  public class MyInterfaceImpl implements MyInterfaceA, MyInterfaceB {
+   // 覆盖重写所有抽象方法
+  }
+  ```
+
+3. 如果实现类所实现的多个接口当中，存在重复的抽象方法（例如MyInterfaceA和MyInterfaceB中有一样的抽象方法），那么只需要覆盖重写一次即可。
+
+4. 如果实现类没有覆盖重写所有接口当中的所有抽象方法，那么实现类就必须是一个抽象类。
+
+5. 如果实现类所实现的多个接口当中，存在重复的默认方法，那么实现类一定要对冲突的默认方法进行覆盖重写。
+
+6. 一个类的直接父类当中的方法，和接口当中的默认方法产生了冲突，优先用父类当中的方法。（继承优先接口）例子：
+
+   ```java
+   public interface MyInterface {
+   
+       public default void method() {
+           System.out.println("接口的默认方法");
+       }
+   
+   }
+   
+   public class Fu {
+   
+       public void method() {
+           System.out.println("父类方法");
+       }
+   
+   }
+   
+   public class Zi extends Fu implements MyInterface {
+   }
+   
+   public class Demo01Interface {
+   
+       public static void main(String[] args) {
+           Zi zi = new Zi();
+           zi.method();
+       }
+   
+   }
+   
+   // 父类方法
+   ```
+
+7. 接口与接口之间是多继承的。
+
+   ```java
+   public interface MyInterface extends MyInterfaceA, MyInterfaceB {
+   
+       public abstract void method();
+   
+       @Override
+       public default void methodDefault() {
+   
+       }
+   }
+   ```
+
+   注意事项：
+
+   1. 多个父接口当中的抽象方法如果重复，没关系。
+   2. 多个父接口当中的默认方法如果重复，那么子接口必须进行默认方法的覆盖重写，【而且带着default关键字】。
+
+**3. 比较**  
 
 - 从设计层面上看，抽象类提供了一种 IS-A 关系，需要满足里式替换原则，即子类对象必须能够替换掉所有父类对象。而接口更像是一种 LIKE-A 关系，它只是提供一种方法实现规范，并不要求接口和实现接口的类具有 IS-A 关系。
 - 从使用上来看，一个类可以实现多个接口，但是不能继承多个抽象类。
@@ -1770,11 +2060,39 @@ System.out.println(InterfaceExample.x);
 - [When to Use Abstract Class and Interface](https://dzone.com/articles/when-to-use-abstract-class-and-intreface)
 - [Java 9 Private Methods in Interfaces](https://www.journaldev.com/12850/java-9-private-methods-interfaces)
 
-# 九、多态
+# 九、面向对象三大特征-多态
 
 ## 概述
 
 继承是多态的前提，如果没有继承也就没有多态。
+
+<div align="center"> <img src="../../pics/148561c8-89bc-446b-8456-9d6b0da8d60b.png" width="500"/> </div><br>
+
+代码当中体现多态性，其实就是一句话：父类引用指向子类对象。格式：
+
+父类名称 对象名 = new 子类名称();
+
+或者：
+
+接口名称 对象名 = new 实现类名称();
+
+```java
+
+public class Demo01Multi {
+
+    public static void main(String[] args) {
+        // 使用多态的写法
+        // 左侧父类的引用，指向了右侧子类的对象
+        Fu obj = new Zi();
+				// 调用抽象方法，实际运行的是右侧实现类。
+        // 调用默认方法，如果实现类当中没有，会向上找接口
+        obj.method();// 先去找子
+        obj.methodFu();
+    }
+}
+```
+
+左“父”右“子”就是多态！！！！！！！
 
 ## 重写与重载
 
