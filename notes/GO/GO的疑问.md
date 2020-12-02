@@ -386,6 +386,34 @@ func main() {
    rf = method.Interface().(func(i int) int)
    rf(1)  // 调用函数
 }
+
+func Benchmark_F1(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		rf(i)
+	}
+}
+func Benchmark_F2(b *testing.B) {
+	var v tt
+
+	f := v.Test
+	for i := 0; i < b.N; i++ {
+		f(i)
+	}
+}
+```
+
+以上例子还表明，虽然结果相同但调用的函数类型不同，[性能是不一样的](https://github.com/teh-cmc/go-internals/tree/master/chapter2_interfaces):
+
+func (Value) [Interface](https://github.com/golang/go/blob/master/src/reflect/value.go?name=release#1069)
+
+```
+func (v Value) Interface() (i interface{})
+```
+
+本方法返回v当前持有的值（表示为/保管在interface{}类型），等价于（只是结果等价）：
+
+```
+var i interface{} = (v's underlying value)
 ```
 
 ## 2.for的用法
