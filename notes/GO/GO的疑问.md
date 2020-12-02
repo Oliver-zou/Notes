@@ -402,7 +402,7 @@ func Benchmark_F2(b *testing.B) {
 }
 ```
 
-以上例子还表明，虽然结果相同但调用的函数类型不同，[性能是不一样的](https://github.com/teh-cmc/go-internals/tree/master/chapter2_interfaces):
+以上例子还表明，虽然结果相同但调用的函数类型不同，[性能是不一样的](https://github.com/teh-cmc/go-internals/tree/master/chapter2_interfaces)，reflect.object首先从interface{}转换而来后，再是运行期中需要进行的各种耗时操作，导致性能低下:
 
 func (Value) [Interface](https://github.com/golang/go/blob/master/src/reflect/value.go?name=release#1069)
 
@@ -419,8 +419,6 @@ var i interface{} = (v's underlying value)
 ## 2.for的用法
 
 像for一样，if语句可以从简短语句开始，然后在条件之前执行。语句声明的变量仅在范围内，直到if结束。
-
- 
 
 ```go
 package main
