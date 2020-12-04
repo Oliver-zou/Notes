@@ -440,7 +440,7 @@ func makemap(t *maptype, hint int64, h *hmap, bucket unsafe.Pointer) *hmap {
 
 在 Go 语言中，我们可以把函数作为一种变量，用 type 去定义它，那么这个函数类型就可以作为值传递，甚至可以实现方法，这一特性是在太灵活了，有时候我们甚至可以利用这一特性进行类型转换。作为值传递的条件是类型具有相同的参数以及相同的返回值。
 
- 这一点与python的装饰器的原理类似，区分函数与函数调用的区别
+ 这一点与python的装饰器的原理类似，区分**函数**与**函数调用**的区别
 
 **1.1函数的类型转换**
 
@@ -514,14 +514,28 @@ func Calculate(a, b int, f CalculateType) int {
   return f(a, b)
 }
 
+// 返回有返回的func类型，没有被调用则不返回func的return
+func CalculateB(a, b int, f CalculateType) func(x int, y int) int {
+	cc := func(x int, y int) int {
+		return 222
+	}
+	fmt.Println(reflect.TypeOf(cc))
+	fmt.Println(cc(1,2))
+	return cc
+}
+
 func main() {
   a, b := 2, 3
   fmt.Println(Calculate(a, b, add))
   fmt.Println(Calculate(a, b, mul))
+  fmt.Println(CalculateB(a, b, add))
 }
-// 5
-// 6
-复制代码
+////////////////////////////////
+5
+6
+func(int, int) int
+222
+0x49e0c0
 ```
 
 如上例子，Calculate 的 f 参数类型为 CalculateType，add 和 mul 函数具有和 CalculateType 函数类型相同的参数和返回值，因此可以将 add 和 mul 函数作为参数传入 Calculate 函数中。
@@ -611,6 +625,12 @@ func (v Value) Interface() (i interface{})
 var i interface{} = (v's underlying value)
 ```
 
+**1.3 functional options API**
+
+将配置项改为可变参数，传入修改具体配置的函数，使用函数的好处是配置项完全自由，并且对默认值友好，因为不传的话就是用默认值，传入配置函数就使用传入的参数。也就是“省略号”的用法。
+
+
+
 ## 2.for的用法
 
 像for一样，if语句可以从简短语句开始，然后在条件之前执行。语句声明的变量仅在范围内，直到if结束。
@@ -638,13 +658,68 @@ func main() {
 }
 ```
 
+## 3. 省略号...的作用
 
+**3.1 在数组中**
 
+在数组字面量中，如果省略号"..."出现在数组长度的位置，那么数组的长度由初始化数组的元素个数决定。
 
+```go
+q := [...]int{1,2,3}
+fmt.Printf("%T\n",q) //"[3]int"
+```
 
+**3.2 在切片中**
 
+打散Slice
 
+```go
+func main() {
+    var arr1 []int
+    arr2 := []int{1,2,3}
+    arr1 = append(arr1,0)   
+    arr1 = append(arr1,arr2...)  
+    // arr2... 将切片arr2打散成 ==> arr1 =append(arr1,1,2,3)
+    fmt.Printf("%v\n",arr1)
+ 
+    var arr3 []byte
+    arr3 = append(arr3,[]byte("hello")...)  
+    fmt.Printf("%s\n",arr3)
+}
+```
 
+**3.3 变长的函数参数**
+
+```go
+type function func(a, b int32) error
+
+func f1(parms ...function){
+	for _, item := range parms {
+
+		_ = item(1, 2)
+		{
+			fmt.Println("a function")
+		}
+	}
+}
+
+func main() {
+	test1 := func(a, b int32) error {
+		fmt.Println("test1")
+		return nil
+	}
+	test2 := func(a, b int32) error {
+		fmt.Println("test2")
+		return nil
+	}
+	f1(test1, test2)
+}
+//////////////////////////////////////////////
+test1
+a function
+test2
+a function
+```
 
 
 

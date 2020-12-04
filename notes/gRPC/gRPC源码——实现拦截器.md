@@ -11,9 +11,13 @@
 
 # 一、概述
 
-拦截器，在AOP（Aspect-Oriented Programming）中用于在某个方法或字段被访问之前，进行拦截然后在之前或之后加入某些操作。拦截是AOP的一种实现策略。通俗点说，就是在执行一段代码（二、中的handler）之前或者之后，去执行另外一段代码。
+拦截器，拦截器是动态拦截Action调用的对象。它提供了一种机制使开发者可以定义在一个Action执行的前后执行的代码，也可以在一个Action执行前阻止其执行。同时也提供了一种可以提取Action中可重用的部分的方式。
 
-接下来用Go实现一个拦截器，假设有一个方法 handler(ctx context.Context) ，给这个方法赋予一个能力：允许在这个方法执行之前能够打印一行日志。
+拦截器在AOP（Aspect-Oriented Programming）中用于在某个方法或字段被访问之前，进行拦截然后在之前或之后加入某些操作。拦截是AOP的一种实现策略。通俗点说，就是在执行一段代码（二、中的handler）之前或者之后，去执行另外一段代码。
+
+应用场景：鉴权、监控告警、公共参数处理
+
+接下来用Go实现一个拦截器，假设有一个方法 handler(ctx context.Context) ，给这个方法赋予一个能力：允许在这个方法执行之前能够打印一行日志。即执行handler的每个操作，都需先经过interceptor。
 
 # 二、定义
 
@@ -28,22 +32,27 @@ type handler func(ctx context.Context)
 type interceptor func(ctx context.Context, h handler)
 ```
 
-**2.2 申明赋值+编写main函数**
+**2.2 main函数**
 
 ```go
 func main() {
     var ctx context.Context
-
     var ceps []interceptor
+    
   	// 申明赋值
 		// 为了实现目标，对 handler 的每个操作，都需要先经过 interceptor ，
   	// 于是申明两个 interceptor 和 handler 的变量并赋值
+    
+    // 定义业务函数
     var h = func(ctx context.Context) {
         fmt.Println("do something ...")
     }
-
+	
+    // 定义多个拦截器
     var inter1 = func(ctx context.Context, h handler) {
+        // 执行拦截器
         fmt.Println("interceptor1")
+        // 执行业务函数
         h(ctx)
     }
     var inter2 = func(ctx context.Context, h handler) {
@@ -67,6 +76,11 @@ do something ...
 handler执行了两次，与预期效果不同，希望无论打印多少次内容，应该保证handler只执行一次（也就是拦截多次，handler只有一次）。
 
 # 三、参考gPRC-go的example
+
+在 gRPC 中，大类可分为两种 RPC 方法，与拦截器的对应关系是：
+
+- 普通方法：一元拦截器（grpc.UnaryInterceptor）
+- 流方法：流拦截器（grpc.StreamInterceptor）
 
  helloworld demo 客户端的 main 函数，grpc.Dial —> DialContext —> chainUnaryClientInterceptors
 
@@ -94,6 +108,11 @@ func chainUnaryClientInterceptors(cc *ClientConn) {
 }
 ```
 
+- ctx context.Context：请求上下文
+- req interface{}：RPC 方法的请求参数
+- info *UnaryServerInfo：RPC 方法的所有信息
+- handler UnaryHandler：RPC 方法本身
+
 接下里查看`getChainUnaryInvoker`函数：
 
 ```go
@@ -112,6 +131,7 @@ func getChainUnaryInvoker(interceptors []UnaryClientInterceptor, curr int, final
 // 最终抵达服务端请求处理的接口函数，处理完之后返回。
 // UnaryInvoker is called by UnaryClientInterceptor to complete RPCs.
 type UnaryInvoker func(ctx context.Context, method string, req, reply interface{}, cc *ClientConn, opts ...CallOption) error
+// 这里的 opts ...CallOption 参数：functional options API（详见基础）
 ```
 
 返回值赋给`cc.dopts.unaryInt`,但没有立刻被调用。
@@ -149,8 +169,9 @@ func (cc *ClientConn) Invoke(ctx context.Context, method string, args, reply int
 
 ```go
 type invoker func(ctx context.Context, interceptors []interceptor2 , h handler) error
-type handler func(ctx context.Context)
 
+type handler func(ctx context.Context)
+// 拦截器
 type interceptor2 func(ctx context.Context, h handler, ivk invoker) error
 ```
 
@@ -186,16 +207,10 @@ func getChainInterceptor(ctx context.Context, interceptors []interceptor2 , ivk 
 **4.4 最终实现**
 
 ```go
-type interceptor2 func(ctx context.Context, h handler, ivk invoker) error
-
-type handler func(ctx context.Context)
-
-type invoker func(ctx context.Context, interceptors []interceptor2 , h handler) error
-
 func main() {
-
     var ctx context.Context
     var ceps []interceptor2
+    // 拦截器执行函数
     var h = func(ctx context.Context) {
         fmt.Println("do something")
     }
@@ -214,6 +229,7 @@ func main() {
     }
 
     ceps = append(ceps, inter1, inter2, inter3)
+    // 定义业务函数
     var ivk = func(ctx context.Context, interceptors []interceptor2 , h handler) error {
         fmt.Println("invoker start")
         return nil
@@ -224,28 +240,6 @@ func main() {
 
 }
 
-func getChainInterceptor(ctx context.Context, interceptors []interceptor2 , ivk invoker) interceptor2 {
-    if len(interceptors) == 0 {
-        return nil
-    }
-    if len(interceptors) == 1 {
-        return interceptors[0]
-    }
-    return func(ctx context.Context, h handler, ivk invoker) error {
-        return interceptors[0](ctx, h, getInvoker(ctx, interceptors, 0, ivk))
-    }
-
-}
-
-
-func getInvoker(ctx context.Context, interceptors []interceptor2 , cur int, ivk invoker) invoker{
-     if cur == len(interceptors) - 1 {
-        return ivk
-    }
-     return func(ctx context.Context, interceptors []interceptor2 , h handler) error{
-        return     interceptors[cur+1](ctx, h, getInvoker(ctx,interceptors, cur+1, ivk))
-    }
-}
 ////////////////////////////////////////////////////////////
 do something
 do something
