@@ -135,7 +135,7 @@ outside address = 0xc00000a0d8
 
 实参`outside`的地址与形参`inside`的地址不同，因此`outside`的值没有改变。
 
-**1.2数组类型**
+**1.2 数组类型**
 
 与基本数据类型同理，将数据拷贝传入
 
@@ -161,7 +161,7 @@ outside address = 0xc00009e140
 
 实参数组`outside`的起始地址与形参数组`inside`的起始地址不同，即`inside`是`outside`的拷贝，修改`inside`的元素不会改变`outside`对应的元素。
 
-**1.3结构体**
+**1.3 结构体**
 
 ```go
 type IdCard struct {
@@ -214,6 +214,57 @@ ref r ------> 内存地址 -----> 值
 ```
 
 **2.1指针**
+
+go会隐式的对指针进行解引用
+
+```go
+// user defines a user in the program.
+type user struct {
+	email string
+}
+
+// changeEmailByValue implements a method with a value receiver.
+func (u user) changeEmailByValue(email string) {
+	u.email = email
+}
+
+
+// changeEmailByPointer implements a method with a pointer receiver.
+func (u *user) changeEmailByPointer(email string) {
+	u.email = email
+}
+
+func main() {
+	alice := user{"alice@163.com"} // value type
+	fmt.Printf("Alice's original email:%s\n", alice.email)
+	alice.changeEmailByValue("alice@gmail.com")
+	fmt.Printf("ChangeEmailByValue with a value type: %s\n", alice.email)
+
+	bob := &(user{"bob@163.com"}) // pointer type
+	fmt.Printf("Bob's original email:%s\n", bob.email)
+	bob.changeEmailByValue("bob@gmail.com")
+	fmt.Printf("ChangeEmailByValue with a pointer type: %s\n", bob.email)
+
+	carol := user{"carol@163.com"} // value type
+	fmt.Printf("Carol's original email:%s\n", carol.email)
+	carol.changeEmailByPointer("carol@gmail.com")
+	fmt.Printf("ChangeEmailByPointer with a value type: %s\n", carol.email)
+
+	dave := &(user{"dave@163.com"}) // pointer type
+	fmt.Printf("Dave's original email:%s\n", dave.email)
+	dave.changeEmailByPointer("dave@gmail.com")
+	fmt.Printf("ChangeEmailByPointer with a pointer type: %s\n", dave.email)
+}
+/////////////////////////////////////////////
+Alice's original email:alice@163.com
+ChangeEmailByValue with a value type: alice@163.com
+Bob's original email:bob@163.com
+ChangeEmailByValue with a pointer type: bob@163.com
+Carol's original email:carol@163.com
+ChangeEmailByPointer with a value type: carol@gmail.com
+Dave's original email:dave@163.com
+ChangeEmailByPointer with a pointer type: dave@gmail.com
+```
 
 **值传递**：形参时实参的拷贝，改变函数形参并不影响函数外部的实参，这是最常用的一种传递方式，也是最简单的一种传递方式。只需要传递参数，返回值是return考虑的；使用值传递这种方式，调用函数不对实参进行操作，也就是说，即使形参的值发生改变，实参的值也完全不受影响。
 
