@@ -214,6 +214,8 @@ Access-Control-Allow-Origin: *
 
    一定要设置失效时间,要不然浏览器关闭就消失了;
 
+
+
 **Token 和 Session 的区别：**
 
 session和 token并不矛盾，作为身份认证token安全性比session好，因为每个请求都有签名还能防止监听以及重放攻击，而session就必须靠链路层来保障通讯安全了。如上所说，如果你需要实现有状态的会话，仍然可以增加session来在服务器端保存一些状态。
