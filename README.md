@@ -22,6 +22,7 @@
 - [计算机网络](https://github.com/CyC2018/CS-Notes/blob/master/notes/计算机网络%20-%20目录.md)
 - [HTTP](https://github.com/Oliver-zou/Notes/tree/master/notes/network/HTTP.md)
 - [Socket](https://github.com/CyC2018/CS-Notes/blob/master/notes/Socket.md)
+- [Cookie/Session/Token]()
 
 ## :floppy_disk: 数据库
 
@@ -33,7 +34,7 @@
 
 ## :mouse: Go
 
-- [GO的疑问](https://github.com/Oliver-zou/Notes/blob/master/notes/GO/GO%E7%9A%84%E7%96%91%E9%97%AE.md)
+- [GO基础](https://github.com/Oliver-zou/Notes/blob/master/notes/GO/GO%E7%9A%84%E7%96%91%E9%97%AE.md)
 
 ## :snake: Python
 
