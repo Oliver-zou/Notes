@@ -58,7 +58,7 @@ session 也是类似的道理，服务器要知道当前发请求给自己的是
 
 服务器使用session把用户的信息临时保存在了服务器上，用户离开网站后session会被销毁。这种用户信息存储方式相对cookie来说更安全，可是session有一个缺陷：如果web服务器做了负载均衡，那么下一个操作请求到了另一台服务器的时候session会丢失。
 
-<div align="center"> <img src="../../pics/7c68d272-e940-4d10-a2e1-dceb6617b563.png" width="600px"/> </div><br>
+<div align="center"> <img src="../../pics/7c68d272-e940-4d10-a2e1-dceb6617b563.png" width="1000px"/> </div><br>
 
 **2.2 session的生成方式**
 
@@ -130,7 +130,7 @@ token是用户身份的验证方式，我们通常叫它：令牌。最简单的
 
    解除了session id这个负担， 可以说是无事一身轻， 我的机器集群现在可以轻松地做水平扩展， 用户访问量增大， 直接加机器就行。 这种无状态的感觉实在是太好了！
 
-   <div align="center"> <img src="../../pics/12a24eb4-7fef-4767-b6d8-429e6499bfa4.png" width="600px"/> </div><br>
+   <div align="center"> <img src="../../pics/12a24eb4-7fef-4767-b6d8-429e6499bfa4.png" width="1000px"/> </div><br>
 
 **3.3 应用场景**
 
