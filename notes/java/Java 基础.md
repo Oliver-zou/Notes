@@ -2077,7 +2077,6 @@ ac2.func1();
 接口名称 对象名 = new 实现类名称();
 
 ```java
-
 public class Demo01Multi {
 
     public static void main(String[] args) {
@@ -2093,6 +2092,203 @@ public class Demo01Multi {
 ```
 
 左“父”右“子”就是多态！！！！！！！
+
+**9.1 多态中成员变量和方法的使用特点**
+
+访问成员**变量**的两种方式:
+
+1. 直接通过对象名称访问成员变量：看等号左边是谁，优先用谁，没有则向上找。
+2. 间接通过成员方法访问成员变量：看该方法属于谁，优先用谁，没有则向上找
+
+```java
+public class Fu /*extends Object*/ {
+
+    int num = 10;
+
+    public void showNum() {
+        System.out.println(num);
+    }
+
+    public void method() {
+        System.out.println("父类方法");
+    }
+
+    public void methodFu() {
+        System.out.println("父类特有方法");
+    }
+
+}
+
+public class Zi extends Fu {
+
+    int num = 20;
+
+    int age = 16;
+
+    @Override
+    public void showNum() {
+        System.out.println(num);
+    }
+
+    @Override
+    public void method() {
+        System.out.println("子类方法");
+    }
+
+    public void methodZi() {
+        System.out.println("子类特有方法");
+    }
+}
+
+public class Demo01MultiField {
+
+    public static void main(String[] args) {
+        // 使用多态的写法，父类引用指向子类对象
+        Fu obj = new Zi();
+        System.out.println(obj.num); // 父：10
+//        System.out.println(obj.age); // 错误写法！
+        System.out.println("=============");
+
+        // 子类没有覆盖重写，就是父：10
+        // 子类如果覆盖重写，就是子：20
+        obj.showNum();
+    }
+
+}
+```
+
+在多态的代码当中，成员**方法**的访问规则是：
+    看new的是谁，就优先用谁，没有则向上找。
+
+口诀：编译看左边，运行看右边。
+
+对比一下：
+成员变量：编译看左边，运行还看左边。
+成员方法：编译看左边，运行看右边。
+
+```java
+public class Demo02MultiMethod {
+
+    public static void main(String[] args) {
+        Fu obj = new Zi(); // 多态
+
+        obj.method(); // 父子都有，优先用子
+        obj.methodFu(); // 子类没有，父类有，向上找到父类
+
+        // 编译看左边，左边是Fu，Fu当中没有methodZi方法，所以编译报错。
+//        obj.methodZi(); // 错误写法！
+    }
+
+}
+```
+
+<div align="center"> <img src="../../pics/0b1940e7-e880-40d7-b396-a6dd4c79a52e.png" width="800"/> </div><br>
+
+**9.3 对象的转型**
+
+<div align="center"> <img src="../../pics/d8046c3b-3ae1-459a-87f2-acb053eeee22.png" width="800"/> </div><br>
+
+```java
+public abstract class Animal {
+
+    public abstract void eat();
+
+}
+
+public class Cat extends Animal {
+    @Override
+    public void eat() {
+        System.out.println("猫吃鱼");
+    }
+
+    // 子类特有方法
+    public void catchMouse() {
+        System.out.println("猫抓老鼠");
+    }
+}
+
+public class Dog extends Animal {
+    @Override
+    public void eat() {
+        System.out.println("狗吃SHIT");
+    }
+
+    public void watchHouse() {
+        System.out.println("狗看家");
+    }
+}
+
+
+/*
+向上转型一定是安全的，没有问题的，正确的。但是也有一个弊端：
+对象一旦向上转型为父类，那么就无法调用子类原本特有的内容。
+
+解决方案：用对象的向下转型【还原】。
+ */
+public class Demo01Main {
+
+    public static void main(String[] args) {
+        // 对象的向上转型，就是：父类引用指向之类对象。
+        Animal animal = new Cat(); // 本来创建的时候是一只猫
+        animal.eat(); // 猫吃鱼
+
+//        animal.catchMouse(); // 错误写法！
+
+        // 向下转型，进行“还原”动作
+        Cat cat = (Cat) animal;
+        cat.catchMouse(); // 猫抓老鼠
+
+        // 下面是错误的向下转型
+        // 本来new的时候是一只猫，现在非要当做狗
+        // 错误写法！编译不会报错，但是运行会出现异常：
+        // java.lang.ClassCastException，类转换异常
+        Dog dog = (Dog) animal;
+    }
+
+}
+```
+
+```java
+/*
+如何才能知道一个父类引用的对象，本来是什么子类？
+格式：
+对象 instanceof 类名称
+这将会得到一个boolean值结果，也就是判断前面的对象能不能当做后面类型的实例。
+ */
+public class Demo02Instanceof {
+
+    public static void main(String[] args) {
+        Animal animal = new Dog(); // 本来是一只狗
+        animal.eat(); // 狗吃SHIT
+
+        // 如果希望掉用子类特有方法，需要向下转型
+        // 判断一下父类引用animal本来是不是Dog
+        if (animal instanceof Dog) {
+            Dog dog = (Dog) animal;
+            dog.watchHouse();
+        }
+        // 判断一下animal本来是不是Cat
+        if (animal instanceof Cat) {
+            Cat cat = (Cat) animal;
+            cat.catchMouse();
+        }
+
+        giveMeAPet(new Dog());
+    }
+
+    public static void giveMeAPet(Animal animal) {
+        if (animal instanceof Dog) {
+            Dog dog = (Dog) animal;
+            dog.watchHouse();
+        }
+        if (animal instanceof Cat) {
+            Cat cat = (Cat) animal;
+            cat.catchMouse();
+        }
+    }
+
+}
+```
 
 ## 重写与重载
 
