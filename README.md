@@ -22,7 +22,7 @@
 - [计算机网络](https://github.com/CyC2018/CS-Notes/blob/master/notes/计算机网络%20-%20目录.md)
 - [HTTP](https://github.com/Oliver-zou/Notes/tree/master/notes/network/HTTP.md)
 - [Socket](https://github.com/CyC2018/CS-Notes/blob/master/notes/Socket.md)
-- [Cookie/Session/Token](https://github.com/Oliver-zou/Notes/blob/master/notes/network/Cookie:Session:Token.md)
+- [Cookie_Session_Token](https://github.com/Oliver-zou/Notes/blob/master/notes/network/Cookie_Session_Token.md)
 
 ## :floppy_disk: 数据库
 
