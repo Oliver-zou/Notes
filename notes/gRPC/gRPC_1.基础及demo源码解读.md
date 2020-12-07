@@ -422,7 +422,7 @@ func main() {
 }
 ```
 
-1.1 创建服务端server
+**1.1 创建服务端server**
 
 ```go
 // NewServer creates a gRPC server which has no service registered and has not
@@ -460,7 +460,7 @@ func NewServer(opt ...ServerOption) *Server {
 }
 ```
 
-创建服务端server的核心是创建了个server结构体
+创建服务端server的核心是创建了个server结构体，再为结构体的属性赋值。
 
 ```go
 // Server is a gRPC server to serve RPC requests.
@@ -504,9 +504,9 @@ type serviceInfo struct {
 }
 ```
 
-1.2 server注册
+**1.2 server注册**
 
-server的注册调用`RegisterGreeterServer`方法（存在于pb.go文件中），上述方法又调用了`RegisterService`方法并传入`ServiceDesc`结构体
+server的注册调用`RegisterGreeterServer`**方法**（存在于pb.go文件中），上述方法又调用了`RegisterService`方法并传入`ServiceDesc`结构体
 
 ```go
 func RegisterGreeterServer(s grpc.ServiceRegistrar, srv GreeterServer) {
@@ -576,9 +576,9 @@ func (s *Server) register(sd *ServiceDesc, ss interface{}) {
 }
 ```
 
-1.3 调用Serve监听端口并处理请求
+**1.3 调用Serve监听端口并处理请求**
 
-C/S模式的通信过程大同小异：server通过死循环的方式在某一端口实现监听，client再对该接口发起连接请求，握手成功后建立连接，server最后处理client发送过来的请求数据，根据请求类型和参数，调用不用不同的handler进行处理，并返回数据。
+C/S模式的通信过程大同小异：server通过死循环的方式在某一端口实现监听，client再对该接口发起连接请求，握手成功后建立连接，server最后处理client发送过来的请求数据，根据请求类型和参数，调用不同的handler进行处理，并返回数据。所以，对 server 端来说，主要是了解其如何实现监听，如何为请求分配不同的 handler 和 回写响应数据。上面我们得知 server 调用了 Serve 方法来进行处理
 
 因此，关注`serve`for循环：
 
@@ -594,7 +594,7 @@ for {
 	}
 ```
 
-新发起的协程调用了`handleRawConn`方法，其中实现了HTTP/2：
+server 的监听果然是通过一个死循环 调用了 lis.Accept() 进行端口监听。新发起的协程调用了`handleRawConn`方法，其中实现了HTTP/2：
 
 ```go
 // handleRawConn forks a goroutine to handle a just-accepted connection that
@@ -617,7 +617,30 @@ func (s *Server) handleRawConn(rawConn net.Conn) {
 }
 ```
 
-有新发起的协程调用了`serveStreams`方法，其中调用`handleStream`：
+可以看到 handleRawConn 里面实现了 http 的 handshake，还记得之前我们说过，再次验证grpc 是基于 http2 实现。又新发起的协程调用了`serveStreams`方法，其中调用`handleStream`：
+
+```go
+func (s *Server) serveStreams(st transport.ServerTransport) {
+    defer st.Close()
+    var wg sync.WaitGroup
+    st.HandleStreams(func(stream *transport.Stream) {
+        wg.Add(1)
+        go func() {
+            defer wg.Done()
+            s.handleStream(st, stream, s.traceInfo(st, stream))
+        }()
+    }, func(ctx context.Context, method string) context.Context {
+        if !EnableTracing {
+            return ctx
+        }
+        tr := trace.New("grpc.Recv."+methodFamily(method), method)
+        return trace.NewContext(ctx, tr)
+    })
+    wg.Wait()
+}
+```
+
+其实它主要调用了 handleStream ，继续跟进 handleStream 方法，如下：
 
 ```go
 func (s *Server) handleStream(t transport.ServerTransport, stream *transport.Stream, trInfo *traceInfo) {
@@ -626,7 +649,7 @@ func (s *Server) handleStream(t transport.ServerTransport, stream *transport.Str
 	service := sm[:pos]
 	method := sm[pos+1:]
 	
-    // 重点：根据serviceName取出handler，不涉及stream，直接传给processUnaryRPC
+    // 重点：根据serviceName取出handler，不涉及stream，直接传给processUnaryRPC进行处理
 	srv, knownService := s.m[service]
 	if knownService {
 		if md, ok := srv.md[method]; ok {
@@ -702,7 +725,7 @@ func (s *Server) processUnaryRPC(t transport.ServerTransport, stream *transport.
 		}()
 	}
 	... 
-    // 返回
+    // 返回（回写）
 	if err := s.sendResponse(t, stream, reply, cp, opts, comp); err != nil {
 		if err == io.EOF {
 			// The entire stream is done (for unary RPC only).
@@ -772,7 +795,7 @@ func main() {
 
 2.1 创建一个客户端连接conn
 
-其中先调用了`DialContext`方法，里面再调用`DialContext`方法，其中先对`ClientConn`结构体实例化（为ClientConn赋值）
+其中先调用了`Dial`方法，里面再调用`DialContext`方法，其中先对`ClientConn`结构体实例化（**主要为 ClientConn 的 dopts 的各个属性进行初始化赋值**）
 
 ```go
 cc := &ClientConn{
@@ -784,7 +807,11 @@ cc := &ClientConn{
 	czData:            new(channelzData),
 	firstResolveEvent: grpcsync.NewEvent(),
 }
+```
 
+ClientConn 的结构：
+
+```go
 // A ClientConn encapsulates a range of functionality including name
 // resolution, TCP connection establishment (with retries and backoff) and TLS
 // handshakes. It also handles errors on established connections by
@@ -820,44 +847,68 @@ type ClientConn struct {
 	lceMu               sync.Mutex // protects lastConnectionError
 	lastConnectionError error
 }
+```
 
-// 初始化的属性
+dialOptions 其实就是对客户端属性的一些设置，包括压缩解压缩、是否需要认证、超时时间、是否重试等信息。
 
+这里我们来看一下初始化了哪些属性：
+
+**connectivityStateManager**
+
+```go
 // 连接的状态管理器
+// 每个连接具有 “IDLE”、“CONNECTING”、“READY”、“TRANSIENT_FAILURE”、“SHUTDOW N”、“Invalid-State” 这几种状态
 // connectivityStateManager keeps the connectivity.State of ClientConn.
 // This struct will eventually be exported so the balancers can access it.
 type connectivityStateManager struct {
 	mu         sync.Mutex
-	state      connectivity.State
+	state      connectivity.Statego
 	notifyChan chan struct{}
 	channelzID int64
 }
+```
 
-// pickerWrapper对balancer.Picker（负载均衡器，只有一个Pick方法，返回SubConn连接）的封装
-// 在分布式环境下，可能会存在多个 client 和 多个 server，client 发起一个 rpc 调用之前，需要通过
-// balancer 去找到一个 server 的 address，balancer 的 Picker 类返回一个 SubConn，SubConn 里面包
-// 含了多个 server 的 address，假如返回的 SubConn 是 “READY” 状态，grpc 会发送 RPC 请求，否则则会阻
-// 塞，等待 UpdateBalancerState 这个方法更新连接的状态并且通过 picker 获取一个新的 SubConn 连接。
-// pickerWrapper is a wrapper of balancer.Picker. It blocks on certain pick
-// actions and unblock when there's a picker update.
+**pickerWrapper**
+
+```go
 type pickerWrapper struct {
 	mu         sync.Mutex
 	done       bool
 	blockingCh chan struct{}
 	picker     balancer.Picker
 }
+```
+
+pickerWrapper 是对 balancer.Picker 的一层封装，balancer.Picker 其实是一个负载均衡器，它里面只有一个 Pick 方法，它返回一个 SubConn 连接。
+
+```go
+// pickerWrapper is a wrapper of balancer.Picker. It blocks on certain pick
+// actions and unblock when there's a picker update.
 type Picker interface {
 	Pick(info PickInfo) (PickResult, error)
 }
+
 // PickResult contains information related to a connection chosen for an RPC.
 type PickResult struct {
+	// SubConn is the connection to use for this pick, if its state is Ready.
+	// If the state is not Ready, gRPC will block the RPC until a new Picker is
+	// provided by the balancer (using ClientConn.UpdateState).  The SubConn
+	// must be one returned by ClientConn.NewSubConn.
 	SubConn SubConn
+
+	// Done is called when the RPC is completed.  If the SubConn is not ready,
+	// this will be called with a nil parameter.  If the SubConn is not a valid
+	// type, Done may not be called.  May be nil if the balancer does not wish
+	// to be notified when the RPC completes.
 	Done func(DoneInfo)
 }
-
 ```
 
-`DialContext`中的`channelz`主要用來檢測server和channel的状态，[参考](https://github.com/grpc/proposal/blob/master/A14-channelz.md)
+在分布式环境下，可能会存在多个 client 和 多个 server，client 发起一个 rpc 调用之前，需要通过 balancer 去找到一个 server 的 address，balancer 的 Picker 类返回一个 SubConn，SubConn 里面包含了多个 server 的 address，假如返回的 SubConn 是 “READY” 状态，grpc 会发送 RPC 请求，否则则会阻塞，等待 UpdateBalancerState 这个方法更新连接的状态并且通过 picker 获取一个新的 SubConn 连接。
+
+**channelz**
+
+主要用來檢測server和channel的状态，[参考](https://github.com/grpc/proposal/blob/master/A14-channelz.md)
 
 ```go
 if channelz.IsOn() {
@@ -878,6 +929,8 @@ if channelz.IsOn() {
 		cc.csMgr.channelzID = cc.channelzID
 	}
 ```
+
+**Authentication**
 
 以下段落是对认证信息的初始化校验，[参考](https://grpc.io/docs/guides/auth/)
 
@@ -901,38 +954,51 @@ if channelz.IsOn() {
 	}
 ```
 
+**Dialer**
+
 `DialContext`中的`Dialer`主要用來发起rpc的调用器，在其中实现了对rpc请求调用的具体细节（建立连接、地址解析、服务发现、长连接等策略）。
 
 ```go
-if cc.dopts.copts.Dialer == nil {
-		cc.dopts.copts.Dialer = func(ctx context.Context, addr string) (net.Conn, error) {
-			network, addr := parseDialTarget(addr)
-			return (&net.Dialer{}).DialContext(ctx, network, addr)
+	// Determine the resolver to use.
+	cc.parsedTarget = grpcutil.ParseTarget(cc.target, cc.dopts.copts.Dialer != nil)
+	channelz.Infof(logger, cc.channelzID, "parsed scheme: %q", cc.parsedTarget.Scheme)
+	resolverBuilder := cc.getResolver(cc.parsedTarget.Scheme)
+	if resolverBuilder == nil {
+		// If resolver builder is still nil, the parsed target's scheme is
+		// not registered. Fallback to default resolver and set Endpoint to
+		// the original target.
+		channelz.Infof(logger, cc.channelzID, "scheme %q not registered, fallback to default scheme", cc.parsedTarget.Scheme)
+		cc.parsedTarget = resolver.Target{
+			Scheme:   resolver.GetDefaultScheme(),
+			Endpoint: target,
 		}
-		if cc.dopts.withProxy {
-			cc.dopts.copts.Dialer = newProxyDialer(cc.dopts.copts.Dialer)
+		resolverBuilder = cc.getResolver(cc.parsedTarget.Scheme)
+		if resolverBuilder == nil {
+			return nil, fmt.Errorf("could not get resolver for default scheme: %q", cc.parsedTarget.Scheme)
 		}
 	}
 ```
 
-在`DialContext`方法中有一行，其中的`resolver`进行服务发现。这里值得一提的是，通过 dialContext 可以看出，这里的 dial 有两种请求方式，一种是 dialParallel , 另一种是 dialSerial。dialParallel 发出两个完全相同的请求，采用第一个返回的结果，抛弃掉第二个请求。dialSerial 则是发出一串（多个）请求。然后采取第一个返回的请求结果（ 成功或者失败）。
+其中的`resolver`进行服务发现。这里值得一提的是，通过 DialContext 可以看出，这里的 dial 有两种请求方式，一种是 dialParallel , 另一种是 dialSerial。dialParallel 发出两个完全相同的请求，采用第一个返回的结果，抛弃掉第二个请求。dialSerial 则是发出一串（多个）请求。然后采取第一个返回的请求结果（ 成功或者失败）。
 
-```go
-addrs, err := d.resolver().resolveAddrList(resolveCtx, "dial", network, address, d.LocalAddr)
+**scChan**
+
+`DialContext`中的`scChan`是dialOptions中的一个属性，可以看到其实他是一个 ServiceConfig类型的一个 channel，那么 ServiceConfig 是什么呢？源码中对这个类的介绍如下：
+
+```
+scChan  <-chan ServiceConfig
+
+// ServiceConfig is provided by the service provider and contains parameters for how clients that connect to the service should behave.
 ```
 
-`DialContext`中的`scChan`是dialOptions中的一个属性
+通过介绍得知 ServiceConfig 是服务提供方约定的一些参数。这里说明 client 提供给 server 一个可以通过 channel 来修改这些参数的入口。这里在服务发现时可以细讲，在这里只需要知道 client 的某些属性是可以被 server 修改的就行了
 
 ```GO
 if cc.dopts.scChan != nil {
 	// Try to get an initial service config.
 	select {
-        // scChan          <-chan ServiceConfig
-        // scChan就是ServiceConfig类型的channel
         // ServiceConfig is provided by the service provider and contains parameters for how
 		// clients that connect to the service should behave.
-        // ServiceConfig是服务提供方约定的一些参数，这里说明client提供给server一个可以通过channel
-        // 来修改这些参数的入口
 	case sc, ok := <-cc.dopts.scChan:
 		if ok {
 			cc.sc = &sc
@@ -943,7 +1009,7 @@ if cc.dopts.scChan != nil {
 }
 ```
 
-2.2  通过一个conn创建客户端
+**2.2  通过一个conn创建客户端**
 
 这一步骤就是pb中生成的代码，本质就是创建一个`greeterClient`的客户端。
 
@@ -957,7 +1023,7 @@ func NewGreeterClient(cc grpc.ClientConnInterface) GreeterClient {
 }
 ```
 
-2.3 发起rpc调用
+**2.3 发起rpc调用**
 
 前面创建Dialer时，已将请求的target解析成address，猜测这一步应该会向指定address发起rpc求请求了。下面进行探索验证：
 
