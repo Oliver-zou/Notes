@@ -2,6 +2,8 @@
 
 #### 1. 接口定义
 
+**1.2.1 Resolver和Balancer**
+
  **Picker**接口，一般来说每个GRPC负载均衡器都会带一个Picker，其唯一的Pick方法用来根据一定的条件选取一个PickResult的连接(SubConn).在负载均衡器初始化时，以及连接状态变化时，会触发更新Picker.定义如下：
 
 ```go
@@ -99,25 +101,12 @@ func DialContext(ctx context.Context, target string, opts ...DialOption) (conn *
 	}
 	// ... 略去一坨proxy, agency, 超时控制等相关的代码
 
-	// Determine the resolver to use.
-	cc.parsedTarget = grpcutil.ParseTarget(cc.target, cc.dopts.copts.Dialer != nil)
-	channelz.Infof(logger, cc.channelzID, "parsed scheme: %q", cc.parsedTarget.Scheme)
-	resolverBuilder := cc.getResolver(cc.parsedTarget.Scheme)
-	if resolverBuilder == nil {
-		// If resolver builder is still nil, the parsed target's scheme is
-		// not registered. Fallback to default resolver and set Endpoint to
-		// the original target.
-		channelz.Infof(logger, cc.channelzID, "scheme %q not registered, fallback to default scheme", cc.parsedTarget.Scheme)
-		cc.parsedTarget = resolver.Target{
-			Scheme:   resolver.GetDefaultScheme(),
-			Endpoint: target,
+	if cc.dopts.resolverBuilder == nil {
+		// ... 略去一坨 获取默认resolverBuilder的代码
 		}
-		resolverBuilder = cc.getResolver(cc.parsedTarget.Scheme)
-		if resolverBuilder == nil {
-			return nil, fmt.Errorf("could not get resolver for default scheme: %q", cc.parsedTarget.Scheme)
-		}
+	} else {
+		cc.parsedTarget = resolver.Target{Endpoint: target}
 	}
-
 	// ... 略去一坨auth相关的代码
 
 	// 新建 ResolverWrapper 和 resolver. 这又是一个策略模式
@@ -129,31 +118,7 @@ func DialContext(ctx context.Context, target string, opts ...DialOption) (conn *
     // 现版本将start放到了build过程中
 	cc.resolverWrapper.start()
 
-	// 阻塞模式下 阻塞等待连接完成的代码
-	if cc.dopts.block {
-		for {
-			s := cc.GetState()
-			if s == connectivity.Ready {
-				break
-			} else if cc.dopts.copts.FailOnNonTempDialError && s == connectivity.TransientFailure {
-				if err = cc.connectionError(); err != nil {
-					terr, ok := err.(interface {
-						Temporary() bool
-					})
-					if ok && !terr.Temporary() {
-						return nil, err
-					}
-				}
-			}
-			if !cc.WaitForStateChange(ctx, s) {
-				// ctx got timeout or canceled.
-				if err = cc.connectionError(); err != nil && cc.dopts.returnLastError {
-					return nil, err
-				}
-				return nil, ctx.Err()
-			}
-		}
-	}
+	// ...阻塞模式下 阻塞等待连接完成的代码
 
 	return cc, nil
 }
@@ -349,4 +314,8 @@ func (ccb *ccBalancerWrapper) watcher() {
 - resolverWrapper.handleServiceConfig - balancerWrapper.handleResolvedAddrs - balancer.HandleSubConnStateChange
 
 ​    整理下通过resolver更新balancer地址池的调用路径：
+
+<div align="center"> <img src="../../pics/764de918-7881-46cc-a0b7-b2373794c048.png" width="500px"> </div><br>
+
+**1.2.2 Picker**
 
