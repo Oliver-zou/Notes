@@ -1,17 +1,15 @@
 <!-- GFM-TOC -->
 
-* [一 、服务注册与发现概述](#一-服务注册与发现概述)
+* [一 、服务发现概述](#一-服务发现概述)
 * [二、服务发现的路由方式](#二-服务发现的路由方式)
 
   - [1.客户端路由](#1-客户端路由)
   - [2.代理层路由（服务端发现）](#1-代理层路由（服务端发现）)
 * [三、gRPC服务发现](#三-gRPC服务发现)
-* [四、最终实现](#四-最终实现)
-* [参考](#参考)
 
 <!-- GFM-TOC -->
 
-# 一、服务注册与发现概述
+# 一、服务发现概述
 
 **1.1 解决的问题**
 
@@ -27,8 +25,17 @@
 
 在一个分布式系统中，服务注册与发现组件主要解决两个问题：服务注册和服务发现。
 
-- 服务注册：服务实例将自身服务信息注册到注册中心。这部分服务信息包括服务所在主机IP和提供服务的Port，以及暴露服务自身状态以及访问协议等信息。
-- 服务发现：服务实例请求注册中心获取所依赖服务信息。服务实例通过注册中心，获取到注册到其中的服务实例的信息，通过这些信息去请求它们提供的服务。
+- 服务注册：服务端的服务实例将自身服务信息注册到注册中心。这部分服务信息包括服务所在主机IP和提供服务的Port，以及暴露服务自身状态以及访问协议等信息。
+
+- 服务发现：服务实例请求注册中心获取所依赖服务信息。服务实例通过注册中心，获取到注册到其中的服务实例的信息，通过这些信息去请求它们提供的服务。就是新注册的这个服务模块能够及时的被其他调用者发现。不管是服务新增和服务删减都能实现自动发现。
+
+  ```c++
+  //服务注册
+  NameServer->register(newServer); 
+  
+  //服务发现
+  NameServer->getAllServer(); 
+  ```
 
 除此之外，服务注册与发现需要关注监控服务实例运行状态、负载均衡等问题。
 
@@ -67,6 +74,8 @@ CAP原则，指的是在一个分布式系统中，Consistency(一致性)、Avai
 
   因此,服务注册与发布可以概括为,服务将信息上报,客户端拉取服务信息,通过服务名进行调用,当服务宕机时客户端踢掉故障服务,服务新上线时客户端自动添加到调用列表.
 
+  gRPC 本身没有提供注册中心，但为开发者提供了实现注册中心的接口，开发者是要实现其接口。
+  
   grpc-go的整个实现大量使用go的接口特性,因此通过扩展接口,可以很容易的实现服务的注册与发现,这里服务注册中心考虑到可用性以及一致性,一般采用etcd或zookeeper来实现,这里实现etcd的版本.
 
 # 二、服务发现的路由方式
@@ -98,6 +107,8 @@ CAP原则，指的是在一个分布式系统中，Consistency(一致性)、Avai
 
 grpc 官方介绍的服务发现流程图可以看出，grpc 是使用客户端路由的方式：
 
+<div align="center"> <img src="../../pics/1607426036259.png" width="800px"> </div><br>
+
 1、启动时，grpc client 通过服名字解析服务得到一个 address list，每个 address 将指示它是服务器地址还是负载平衡器地址，以及指示要哪个客户端负载平衡策略的服务配置（例如，round_robin 或 grpclb）
 
 2、客户端实例化负载均衡策略 如果解析程序返回的任何一个地址是负载均衡器地址，则无论 service config 中定义了什么负载均衡策略，客户端都将使用grpclb策略。否则，客户端将使用 service config 中定义的负载均衡策略。如果服务配置未请求负载均衡策略，则客户端将默认使用选择第一个可用服务器地址的策略。
@@ -108,7 +119,7 @@ grpc 官方介绍的服务发现流程图可以看出，grpc 是使用客户端�
 
 # 三、gRPC服务发现
 
-在`grpc client`的`DialContext`的方法中，有这一段关于`resolver`的代码：
+在`grpc client`的`DialContext`的方法中，有这一段关于`resolver`(命名解析)的代码：
 
 ```go
 // Determine the resolver to use.
@@ -183,6 +194,8 @@ func Get(scheme string) Builder {
 ```
 
 **resolver**
+
+Resolver可以用来获取和更新连接地址，特别的当连接地址需要通过ZK等的注册中心，或者一些第三方的负载均衡服务获取时，就可以通过定制Resolver来解析。
 
 ```go
 // Package resolver defines APIs for name resolution in gRPC.
@@ -270,7 +283,7 @@ func Register(b Builder) {
 }
 ```
 
-所有的 resolver 实现类通过 Register 方法去实现 Builder 的注册，比如 grpc 提供的 dnsResolver 这个类中调用了 init 方法，在服务初始化时实现了 Builder 的注册
+所有的 resolver 实现类通过 Register 方法去**实现 Builder 的注册**，比如 grpc 提供的 dnsResolver 这个类中调用了 init 方法，在服务初始化时实现了 Builder 的注册
 
 ```go
 func init() {
@@ -349,7 +362,7 @@ func (b *dnsBuilder) Build(target resolver.Target, cc resolver.ClientConn, opts 
 }
 ```
 
-在 Build 方法中，我们没有看到对 server address 寻址的过程，仔细找找，发现了一个 watcher 方法，如下：
+在 Build 方法中，我们没有看到对 server address 寻址的过程，仔细找找，发现了一个 watcher （服务发现）方法，如下：
 
 ```go
 go d.watcher()
@@ -358,57 +371,53 @@ go d.watcher()
 看一下 watcher 方法，发现它其实是一个监控进程，顾名思义作用是监控我们产生的 resolver 的状态，这里使用了一个 for 循环无限监听，通过 chan 进行消息通知。
 
 ```go
-  func (d *dnsResolver) watcher() {
-        defer d.wg.Done()
-        for {
-            select {
-            case <-d.ctx.Done():
-                return
-            case <-d.t.C:
-            case <-d.rn:
-                if !d.t.Stop() {
-                    // Before resetting a timer, it should be stopped to prevent racing with
-                    // reads on it's channel.
-                    <-d.t.C
-                }
-            }
-            result, sc := d.lookup()
-            // Next lookup should happen within an interval defined by d.freq. It may be
-            // more often due to exponential retry on empty address list.
-            if len(result) == 0 {
-                d.retryCount++
-                d.t.Reset(d.backoff.Backoff(d.retryCount))
-            } else {
-                d.retryCount = 0
-                d.t.Reset(d.freq)
-            }
-            d.cc.NewServiceConfig(sc)
-            d.cc.NewAddress(result)
-            // Sleep to prevent excessive re-resolutions. Incoming resolution requests
-            // will be queued in d.rn.
-            t := time.NewTimer(minDNSResRate)
-            select {
-            case <-t.C:
-            case <-d.ctx.Done():
-                t.Stop()
-                return
-            }
-        }
-    }
+func (d *dnsResolver) watcher() {
+	defer d.wg.Done()
+	for {
+		select {
+		case <-d.ctx.Done():
+			return
+		case <-d.rn:
+		}
+		// 初始化balancer
+		state, err := d.lookup()
+		if err != nil {
+			d.cc.ReportError(err)
+		} else {
+			d.cc.UpdateState(*state)
+		}
+
+		// Sleep to prevent excessive re-resolutions. Incoming resolution requests
+		// will be queued in d.rn.
+		t := time.NewTimer(minDNSResRate)
+		select {
+		case <-t.C:
+		case <-d.ctx.Done():
+			t.Stop()
+			return
+		}
+	}
+}
 ```
 
 定位到里面的 lookup 方法，进入 lookup 方法，发现它调用了 lookupSRV 这个方法：
 
 ```go
-func (d *dnsResolver) lookup() ([]resolver.Address, string) {
-    newAddrs := d.lookupSRV()
-    // Support fallback to non-balancer address.
-    newAddrs = append(newAddrs, d.lookupHost()...)
-    if d.disableServiceConfig {
-        return newAddrs, ""
-    }
-    sc := d.lookupTXT()
-    return newAddrs, canaryingSC(sc)
+func (d *dnsResolver) lookup() (*resolver.State, error) {
+	srv, srvErr := d.lookupSRV()
+	addrs, hostErr := d.lookupHost()
+	if hostErr != nil && (srvErr != nil || len(srv) == 0) {
+		return nil, hostErr
+	}
+
+	state := resolver.State{Addresses: addrs}
+	if len(srv) > 0 {
+		state = grpclbstate.Set(state, &grpclbstate.State{BalancerAddresses: srv})
+	}
+	if !d.disableServiceConfig {
+		state.ServiceConfig = d.lookupTXT()
+	}
+	return &state, nil
 }
 ```
 
@@ -425,3 +434,15 @@ func (d *dnsResolver) lookup() ([]resolver.Address, string) {
 ### 总结
 
 总结一下， grpc 的服务发现，主要通过 resolver 接口去定义，支持业务自己实现服务发现的 resolver。 grpc 提供了默认的 passthrough_resolver，不进行地址解析，直接将 client 发起请求时指定的 address （例如 helloworld client 指定地址为 “localhost:50051” ）当成 server address。同时，假如业务使用 dns 进行服务发现，grpc 提供了 dns_resolver，通过对指定的service服务，protocol协议以及name域名进行srv查询，来返回 server 的 address 列表。
+
+
+
+# 参考
+
+[gRPC服务发现&负载均衡](https://colobu.com/2017/03/25/grpc-naming-and-load-balance/#gRPC%E6%9C%8D%E5%8A%A1%E5%8F%91%E7%8E%B0%E5%8F%8A%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E5%AE%9E%E7%8E%B0)
+
+[基于 gRPC 的服务注册与发现和负载均衡的原理与实战](https://jishuin.proginn.com/p/763bfbd32fe6)
+
+[gRPC 注册中心](https://learnku.com/articles/34777)
+
+[RPC框架解析：gRPC服务发现](http://ldaysjun.com/2020/04/21/rpc/rpc5/)

@@ -504,9 +504,9 @@ type serviceInfo struct {
 }
 ```
 
-**1.2 server注册**
+**1.2 server服务注册**
 
-server的注册调用`RegisterGreeterServer`**方法**（存在于pb.go文件中），上述方法又调用了`RegisterService`方法并传入`ServiceDesc`结构体
+server的注册调用`RegisterGreeterServer`方法（存在于pb.go文件中），上述方法又调用了`RegisterService`方法并传入`ServiceDesc`结构体
 
 ```go
 func RegisterGreeterServer(s grpc.ServiceRegistrar, srv GreeterServer) {
@@ -530,7 +530,7 @@ var Greeter_ServiceDesc = grpc.ServiceDesc{
 }
 ```
 
-再回头看下调用的`RegisterService`的方法，在该方法中调用了`register`方法。在`register`方法方法中，以方法名为key将方法注入到server的service map中。因此，server处理不用的rpc请求，是根据service中不同的serviceName在service map中取出不同的handler进行处理。
+再回头看下调用的`RegisterService`的方法，在该方法中调用了`register`方法。在`register`方法中，以方法名为key将方法注入到server的service map中。因此，server处理不同的rpc请求，是根据service中不同的serviceName在service map中取出不同的handler进行处理。
 
 ```go
 // RegisterService registers a service and its implementation to the gRPC
