@@ -2,9 +2,7 @@
 
 #### 1. 接口定义
 
-**1.2.1 Resolver和Balancer**
-
- **Picker**接口，一般来说每个GRPC负载均衡器都会带一个Picker，其唯一的Pick方法用来根据一定的条件选取一个PickResult的连接(SubConn).在负载均衡器初始化时，以及连接状态变化时，会触发更新Picker.定义如下：
+ **Picker**接口，一般来说每个GRPC负载均衡器都会带一个Picker，其唯一的Pick方法用来根据一定的条件选取一个PickResult的连接(SubConn)，也就是寻址。在负载均衡器初始化时，以及连接状态变化时，会触发更新Picker.定义如下：
 
 ```go
 // The pickers used by gRPC can be updated by ClientConn.UpdateState().
@@ -82,6 +80,8 @@ type Resolver interface {
 
 #### 2. 源码+流程
 
+**2.2.1 Resolver和Balancer**
+
  先从Dial方法入手，Dial方法调用了DialContext方法，该主要用来初始化一个ClientConn对象，略去源码中我们不关心的部分，将重点部分添加注释如下：
 
 ```go
@@ -109,7 +109,7 @@ func DialContext(ctx context.Context, target string, opts ...DialOption) (conn *
 	}
 	// ... 略去一坨auth相关的代码
 
-	// 新建 ResolverWrapper 和 resolver. 这又是一个策略模式
+	// 新建 ResolverWrapper 和 resolver. 这又是一个策略模式（后面的具体方法）
 	rWrapper, err := newCCResolverWrapper(cc, resolverBuilder)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build resolver: %v", err)
@@ -317,5 +317,337 @@ func (ccb *ccBalancerWrapper) watcher() {
 
 <div align="center"> <img src="../../pics/764de918-7881-46cc-a0b7-b2373794c048.png" width="500px"> </div><br>
 
-**1.2.2 Picker**
+**2.2.2 Picker**
 
+Picker一般都是和Balancer成对出现，因此我来看下GRPC默认的一个RoundRobin Balancer实现:
+
+```go
+// Name is the name of round_robin balancer.
+const Name = "round_robin"
+
+// newBuilder creates a new roundrobin balancer builder.
+func newBuilder() balancer.Builder {
+   return base.NewBalancerBuilder(Name, &rrPickerBuilder{})
+}
+
+func init() {
+   balancer.Register(newBuilder())
+}
+
+type rrPickerBuilder struct{}
+
+func (*rrPickerBuilder) Build(readySCs map[resolver.Address]balancer.SubConn) balancer.Picker {
+   grpclog.Infof("roundrobinPicker: newPicker called with readySCs: %v", readySCs)
+   var scs []balancer.SubConn
+   for _, sc := range readySCs {
+      scs = append(scs, sc)
+   }
+   return &rrPicker{
+      subConns: scs,
+   }
+}
+
+type rrPicker struct {
+   // subConns is the snapshot of the roundrobin balancer when this picker was
+   // created. The slice is immutable. Each Get() will do a round robin
+   // selection from it and return the selected SubConn.
+   subConns []balancer.SubConn
+
+   mu   sync.Mutex
+   next int
+}
+
+func (p *rrPicker) Pick(ctx context.Context, opts balancer.PickOptions) (balancer.SubConn, func(balancer.DoneInfo), error) {
+   if len(p.subConns) <= 0 {
+      return nil, nil, balancer.ErrNoSubConnAvailable
+   }
+
+   p.mu.Lock()
+   sc := p.subConns[p.next]
+   p.next = (p.next + 1) % len(p.subConns)
+   p.mu.Unlock()
+   return sc, nil, nil
+}
+```
+
+很简单Build方法创建了一个Picker，Pick方法则使用RoundRobin 选取一个连接。那么Build方法什么时候被调用，Pick方法又是什么时候被调用呢？ 先看Build方法，如果使用GRPC默认的实现，在base.balancer中：
+
+```go
+// regeneratePicker takes a snapshot of the balancer, and generates a picker
+// from it. The picker is
+//  - errPicker with ErrTransientFailure if the balancer is in TransientFailure,
+//  - built by the pickerBuilder with all READY SubConns otherwise.
+func (b *baseBalancer) regeneratePicker() {
+   if b.state == connectivity.TransientFailure {
+      b.picker = NewErrPicker(balancer.ErrTransientFailure)
+      return
+   }
+   readySCs := make(map[resolver.Address]balancer.SubConn)
+
+   // 获取所有可用的连接 放到readySCs中 传给pickerBuilder.Build
+   for addr, sc := range b.subConns {
+      if st, ok := b.scStates[sc]; ok && st == connectivity.Ready {
+         readySCs[addr] = sc
+      }
+   }
+   b.picker = b.pickerBuilder.Build(readySCs)
+}
+
+func (b *baseBalancer) HandleSubConnStateChange(sc balancer.SubConn, s connectivity.State) {
+   grpclog.Infof("base.baseBalancer: handle SubConn state change: %p, %v", sc, s)
+   oldS, ok := b.scStates[sc]
+   if !ok {
+      grpclog.Infof("base.baseBalancer: got state changes for an unknown SubConn: %p, %v", sc, s)
+      return
+   }
+   b.scStates[sc] = s
+   switch s {
+   case connectivity.Idle:
+      sc.Connect()
+   case connectivity.Shutdown:
+      // When an address was removed by resolver, b called RemoveSubConn but
+      // kept the sc's state in scStates. Remove state for this sc here.
+       // 删除关闭的连接
+      delete(b.scStates, sc)
+   }
+
+   oldAggrState := b.state
+   b.state = b.csEvltr.recordTransition(oldS, s)
+
+   // Regenerate picker when one of the following happens:
+   //  - this sc became ready from not-ready
+   //  - this sc became not-ready from ready
+   //  - the aggregated state of balancer became TransientFailure from non-TransientFailure
+   //  - the aggregated state of balancer became non-TransientFailure from TransientFailure
+   if (s == connectivity.Ready) != (oldS == connectivity.Ready) ||
+      (b.state == connectivity.TransientFailure) != (oldAggrState == connectivity.TransientFailure) {
+      b.regeneratePicker()
+   }
+
+   b.cc.UpdateBalancerState(b.state, b.picker)
+}
+```
+
+可以看到是由Balancer接口的HandleSubConnStateChange触发的，这里还有个信息就是Picker所获取到的连接一定是当前可用的。
+
+​     再来看Pick的调用链：
+
+- call.go invoke - stream.go newClientStream - ClientConn  getTransport - pickerWrapper.pick - Picker.pick
+
+​    那么call.go invoke又是什么时候调用的呢，查看GPRC从proto文件自动生成的代码：
+
+```go
+func (c *greeterClient) SayHello(ctx context.Context, in *HelloRequest, opts ...grpc.CallOption) (*HelloReply, error) {
+   out := new(HelloReply)
+   err := c.cc.Invoke(ctx, "/helloworld.Greeter/SayHello", in, out, opts...)
+   if err != nil {
+      return nil, err
+   }
+   return out, nil
+}
+```
+
+每次调用GRPC请求都会触发pick方法
+
+**2.2.3 执行连接**
+
+好像始终没有看到真正执行连接的代码。其实真正的连接要从Balancer内部看，会到我们上面的调用路径，看下balancer.HandleResolvedAddrs到底干了什么，再来看base.balancer的实现：
+
+```go
+func (b *baseBalancer) HandleResolvedAddrs(addrs []resolver.Address, err error) {
+   if err != nil {
+      grpclog.Infof("base.baseBalancer: HandleResolvedAddrs called with error %v", err)
+      return
+   }
+   grpclog.Infoln("base.baseBalancer: got new resolved addresses: ", addrs)
+   // addrsSet is the set converted from addrs, it's used for quick lookup of an address.
+   addrsSet := make(map[resolver.Address]struct{})
+   for _, a := range addrs {
+      addrsSet[a] = struct{}{}
+      if _, ok := b.subConns[a]; !ok {
+         // 如果是新地址才会建立连接, 连接池中已有的地址会保留
+         sc, err := b.cc.NewSubConn([]resolver.Address{a}, balancer.NewSubConnOptions{})
+         if err != nil {
+            grpclog.Warningf("base.baseBalancer: failed to create new SubConn: %v", err)
+            continue
+         }
+         b.subConns[a] = sc
+         b.scStates[sc] = connectivity.Idle
+         sc.Connect()
+      }
+   }
+   for a, sc := range b.subConns {
+      // a was removed by resolver.
+      if _, ok := addrsSet[a]; !ok {
+         b.cc.RemoveSubConn(sc)
+         delete(b.subConns, a)
+         // Keep the state of this sc in b.scStates until sc's state becomes Shutdown.
+         // The entry will be deleted in HandleSubConnStateChange.
+      }
+   }
+}
+```
+
+这里要注意，如果获取到的新地址，已经存在于balancer的连接池中，则不会重新连接，直接沿用旧的连接。具体的连接动作则调用cc.NewSubConn，这里的cc其实是一个ccBalancerWrapper，在ccBalancerWrapper的NewSubConn中，调用了ClientConn的newAddrConn创建了addrConn对象：
+
+```go
+// newAddrConn creates an addrConn for addrs and adds it to cc.conns.
+//
+// Caller needs to make sure len(addrs) > 0.
+func (cc *ClientConn) newAddrConn(addrs []resolver.Address) (*addrConn, error) {
+   ac := &addrConn{
+      cc:    cc,
+      addrs: addrs,
+      dopts: cc.dopts,
+   }
+   ac.ctx, ac.cancel = context.WithCancel(cc.ctx)
+   // Track ac in cc. This needs to be done before any getTransport(...) is called.
+   cc.mu.Lock()
+   if cc.conns == nil {
+      cc.mu.Unlock()
+      return nil, ErrClientConnClosing
+   }
+   if channelz.IsOn() {
+      ac.channelzID = channelz.RegisterSubChannel(ac, cc.channelzID, "")
+   }
+   cc.conns[ac] = struct{}{}
+   cc.mu.Unlock()
+   return ac, nil
+}
+```
+
+ 可以看到这里也只是设置了上下文，然后放入ClientConn内部的地址池，真正连接的动作再回到balancer.HandleResolvedAddrs，获取到addrConn对象之后，调用acBalancerWrapper.Connect()-addrConn.connect()执行连接，绕了一大圈终于找着了：
+
+```go
+// connect starts to creating transport and also starts the transport monitor
+// goroutine for this ac.
+// It does nothing if the ac is not IDLE.
+// TODO(bar) Move this to the addrConn section.
+// This was part of resetAddrConn, keep it here to make the diff look clean.
+func (ac *addrConn) connect() error {
+   ac.mu.Lock()
+   if ac.state == connectivity.Shutdown {
+      ac.mu.Unlock()
+      return errConnClosing
+   }
+   if ac.state != connectivity.Idle {
+      ac.mu.Unlock()
+      return nil
+   }
+   ac.state = connectivity.Connecting
+   ac.cc.handleSubConnStateChange(ac.acbw, ac.state)
+   ac.mu.Unlock()
+
+   // Start a goroutine connecting to the server asynchronously.
+   go func() {
+      if err := ac.resetTransport(); err != nil {
+         grpclog.Warningf("Failed to dial %s: %v; please retry.", ac.addrs[0].Addr, err)
+         if err != errConnClosing {
+            // Keep this ac in cc.conns, to get the reason it's torn down.
+            ac.tearDown(err)
+         }
+         return
+      }
+      ac.transportMonitor()
+   }()
+   return nil
+}
+```
+
+再往下看resetTransport方法，发现还不是重点，重点是resetTransport方法中调用了createTransport方法，代码很长，还是挑重点看：
+
+```go
+// createTransport creates a connection to one of the backends in addrs.
+// It returns true if a connection was established.
+func (ac *addrConn) createTransport(connectRetryNum, ridx int, backoffDeadline, connectDeadline time.Time, addrs []resolver.Address, copts transport.ConnectOptions) (bool, error) {
+   for i := ridx; i < len(addrs); i++ {
+      addr := addrs[i]
+      target := transport.TargetInfo{
+         Addr:      addr.Addr,
+         Metadata:  addr.Metadata,
+         Authority: ac.cc.authority,
+      }
+      done := make(chan struct{})
+       
+    	// ... 省略若干行
+       
+      newTr, err := transport.NewClientTransport(connectCtx, ac.cc.ctx, target, copts, onPrefaceReceipt)
+      if err != nil {
+       	// ... 略去部分处理连接失败的代码
+      }
+      if ac.dopts.waitForHandshake {
+      	// ... 略去部分代码，waitForHandshake为true时会阻塞等待server返回initial settings frame
+
+      }
+      ac.mu.Lock()
+      if ac.state == connectivity.Shutdown {
+         ac.mu.Unlock()
+         // ac.tearDonn(...) has been invoked.
+         newTr.Close()
+         return false, errConnClosing
+      }
+      ac.printf("ready")
+     // 连接成功后调用 handleSubConnStateChange 触发balancer的HandleResolvedAddrs
+
+      ac.state = connectivity.Ready
+      ac.cc.handleSubConnStateChange(ac.acbw, ac.state)
+      ac.transport = newTr
+      ac.curAddr = addr
+      if ac.ready != nil {
+         close(ac.ready)
+         ac.ready = nil
+      }
+      select {
+      case <-done:
+         // If the server has responded back with preface already,
+         // don't set the reconnect parameters.
+      default:
+         ac.connectRetryNum = connectRetryNum
+         ac.backoffDeadline = backoffDeadline
+         ac.connectDeadline = connectDeadline
+         ac.reconnectIdx = i + 1 // Start reconnecting from the next backend in the list.
+      }
+      ac.mu.Unlock()
+      return true, nil
+   }
+   ac.mu.Lock()
+   if ac.state == connectivity.Shutdown {
+      ac.mu.Unlock()
+      return false, errConnClosing
+   }
+   ac.state = connectivity.TransientFailure
+   ac.cc.handleSubConnStateChange(ac.acbw, ac.state)
+   ac.cc.resolveNow(resolver.ResolveNowOption{})
+   if ac.ready != nil {
+      close(ac.ready)
+      ac.ready = nil
+   }
+   ac.mu.Unlock()
+   timer := time.NewTimer(backoffDeadline.Sub(time.Now()))
+   select {
+   case <-timer.C:
+   case <-ac.ctx.Done():
+      timer.Stop()
+      return false, ac.ctx.Err()
+   }
+   return false, nil
+}
+```
+
+大致就是调用了NewClientTransport，连接成功后触发balancer的HandleResolvedAddrs。再看NewClientTransport：
+
+```go
+func NewClientTransport(connectCtx, ctx context.Context, target TargetInfo, opts ConnectOptions, onSuccess func()) (ClientTransport, error) {
+   return newHTTP2Client(connectCtx, ctx, target, opts, onSuccess)
+}
+```
+
+在newHTTP2Client看到了熟悉的TCP连接以及Handshake.
+
+<div align="center"> <img src="../../pics/16074892028628.png" width="800px"> </div><br>
+
+<div align="center"> <img src="../../pics/16074912172687.png" width="800px"> </div><br>
+
+#### 参考
+
+[grpc 源码笔记 01： balancer](https://zhuanlan.zhihu.com/p/104060740)
