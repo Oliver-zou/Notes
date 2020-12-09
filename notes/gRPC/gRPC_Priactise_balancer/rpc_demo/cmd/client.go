@@ -6,6 +6,7 @@ import (
 	"github.com/ldaysjun/rpc_learn/protobuf/helloworld"
 	"github.com/ldaysjun/rpc_learn/rpc_demo/pkg/api"
 	"log"
+	"strconv"
 	"time"
 )
 
@@ -14,7 +15,7 @@ func main() {
 	for i := 0;i<1 ;i++  {
 		fmt.Println("1")
 		req := &helloworld.HelloRequest{
-			Name: "ldaysjun",
+			Name: "hello " + strconv.Itoa(i),
 		}
 		ctx, _ := context.WithTimeout(context.Background(), time.Second * 3)
 		rsp, err := client.SayHello(ctx, req)

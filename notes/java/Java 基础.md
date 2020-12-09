@@ -1,4 +1,5 @@
 <!-- GFM-TOC -->
+
 * [一、数据类型](#一数据类型)
     * [基本类型](#基本类型)
     * [包装类型](#包装类型)
@@ -67,6 +68,8 @@
     * [Java 各版本的新特性](#java-各版本的新特性)
     * [Java 与 C++ 的区别](#java-与-c-的区别)
     * [JRE or JDK](#jre-or-jdk)
+
+* [十五、内部类](#十五内部类)
 
 * [参考资料](#参考资料)
   <!-- GFM-TOC -->
@@ -299,7 +302,7 @@ public boolean equalsIgnoreCase(String str)：忽略大小写，进行内容比�
 
 例子：
 
-<div align="center"><img width="320px" src="../../pics/dc3561b2-a5fa-4789-abe2-b8be7ec87df3.png" width="500px"></img></div>
+<div align="center"><img src="../../pics/dc3561b2-a5fa-4789-abe2-b8be7ec87df3.png"width="800px"></img></div>
 
 如果一个 String 对象已经被创建过了，那么就会从 String Pool 中取得引用。只有 String 是不可变的，才可能使用 String Pool。
 
@@ -783,7 +786,7 @@ public class OuterClass {
 
 　　如果静态内部类访问外部类中与本类（里面存在的）同名成员变量或方法时，需要使用类名.的方式访问。例子如下：
 
-```
+```java
 /**
  * 实现静态内部类的定义和使用
  */
@@ -1293,9 +1296,18 @@ System.out.println(e2.get(2)); // 2
 
 方法和关键字均是封装特性的体现：将细节信息隐藏，对外界不可见，只管调用。
 
-## 访问权限
+Java中有四种权限修饰符：
 
-Java 中有三个访问权限修饰符：private、protected 以及 public，如果不加访问修饰符，表示包级可见。
+|                        | public | protected | (default) | private |
+| ---------------------- | ------ | --------- | --------- | ------- |
+| 同一个类（我自己）     | YES    | YES       | YES       | YES     |
+| 同一个包（我邻居）     | YES    | YES       | YES       | NO      |
+| 不同包子类（我儿子）   | YES    | YES       | NO        | NO      |
+| 不同包非子类（陌生人） | YES    | NO        | NO        | NO      |
+
+注意事项：(default)并不是关键字“default”，而是根本不写。
+
+## 访问权限
 
 可以对类或类中的成员（字段和方法）加上访问修饰符。
 
@@ -1621,7 +1633,7 @@ SuperExtendExample.func()
   
   图解this与super
   
-  <div align="center"> <img src="../../pics/8852d235-0c8e-4d8b-8124-8741633a6cf5.png" width="500"/> </div><br>
+  <div align="center"> <img src="../../pics/8852d235-0c8e-4d8b-8124-8741633a6cf5.png" width="800"/> </div><br>
 
 ## 继承的特点
 
@@ -1629,7 +1641,7 @@ SuperExtendExample.func()
 - Java语言可以多级继承
 - 一个类的直接父类是唯一的，但一个父类可以拥有很多个子类
 
-<div align="center"> <img src="../../pics/c1e16f34-aa4e-4fd1-91ff-ee58abc04f83.png" width="500"/> </div><br>
+<div align="center"> <img src="../../pics/c1e16f34-aa4e-4fd1-91ff-ee58abc04f83.png" width="800"/> </div><br>
 
 # 八、抽象类与接口
 
@@ -2614,6 +2626,108 @@ Java 注解是附加在代码中的一些元信息，用于一些工具在编译
 
 - JRE：Java Runtime Environment，Java 运行环境的简称，为 Java 的运行提供了所需的环境。它是一个 JVM 程序，主要包括了 JVM 的标准实现和一些 Java 基本类库。
 - JDK：Java Development Kit，Java 开发工具包，提供了 Java 的开发及运行环境。JDK 是 Java 开发的核心，集成了 JRE 以及一些其它的工具，比如编译 Java 源码的编译器 javac 等。
+
+# 十五、内部类
+
+如果一个事物的内部包含另一个事物，那么这就是一个类内部包含另一个类。
+例如：身体和心脏的关系。又如：汽车和发动机的关系。
+
+分类：
+1. 成员内部类
+2. 局部内部类（包含匿名内部类）
+
+## 成员内部类
+
+成员内部类的定义格式：
+修饰符 class 外部类名称 {
+    修饰符 class 内部类名称 {
+        // ...
+    }
+    // ...
+}
+
+注意：内部类用外部类，随意访问；外用内，需要内部类对象。
+
+--------------------------------------------------------------------------------------------------------------------
+如何使用成员内部类？有两种方式：
+
+1. 间接方式：在外部类的方法当中，使用内部类；然后main只是调用外部类的方法。
+2. 直接方式，公式：
+类名称 对象名 = new 类名称();
+【外部类名称.内部类名称 对象名 = new 外部类名称().new 内部类名称();】
+
+```java
+public class Body { // 外部类
+
+    public class Heart { // 成员内部类
+
+        // 内部类的方法
+        public void beat() {
+            System.out.println("心脏跳动：蹦蹦蹦！");
+            System.out.println("我叫：" + name); // 正确写法！
+        }
+
+    }
+
+    // 外部类的成员变量
+    private String name;
+
+    // 外部类的方法
+    public void methodBody() {
+        System.out.println("外部类的方法");
+        new Heart().beat();
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+}
+
+
+public class Demo01InnerClass {
+
+    public static void main(String[] args) {
+        Body body = new Body(); // 外部类的对象
+        // 通过外部类的对象，调用外部类的方法，里面间接在使用内部类Heart
+        body.methodBody();
+        System.out.println("=====================");
+
+        // 按照公式写：
+        Body.Heart heart = new Body().new Heart();
+        heart.beat();
+    }
+
+}
+```
+
+
+
+如果出现了重名现象，那么格式是：外部类名称.this.外部类成员变量名
+
+```java
+public class Outer {
+
+    int num = 10; // 外部类的成员变量
+
+    public class Inner /*extends Object*/ {
+
+        int num = 20; // 内部类的成员变量
+
+        public void methodInner() {
+            int num = 30; // 内部类方法的局部变量
+            System.out.println(num); // 局部变量，就近原则
+            System.out.println(this.num); // 内部类的成员变量
+            System.out.println(Outer.this.num); // 外部类的成员变量
+        }
+
+    }
+
+}
+```
 
 # 参考资料
 

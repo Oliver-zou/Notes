@@ -11,7 +11,7 @@ import (
 	"syscall"
 )
 
-const addr = "127.0.0.1:50052"
+const addr = "localhost:50052"
 
 func main() {
 	lis, err := net.Listen("tcp", addr)
