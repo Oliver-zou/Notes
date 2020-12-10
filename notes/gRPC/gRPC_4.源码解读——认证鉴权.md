@@ -1,250 +1,84 @@
 <!-- GFM-TOC -->
 
 * [一 、概述](#一-概述)
-* [二、定义](#二-定义)
+  - [1. 单体模式下的认证鉴权](#1. 单体模式下的认证鉴权)
+  - [2. 微服务模式下的认证鉴权](#2. 微服务模式下的认证鉴权)
+  - [3. grpc 认证鉴权](#3. grpc 认证鉴权)
+* [二、代码实现](#二-代码实现)
 
 - [三、参考gPRC-go的example](#三-参考gPRC-go的example)
-- [四、最终实现](#四-最终实现)
 - [参考](#参考)
 
 <!-- GFM-TOC -->
 
 # 一、概述
 
-拦截器，拦截器是动态拦截Action调用的对象。它提供了一种机制使开发者可以定义在一个Action执行的前后执行的代码，也可以在一个Action执行前阻止其执行。同时也提供了一种可以提取Action中可重用的部分的方式。
+### **1. 单体模式下的认证鉴权**
 
-拦截器在AOP（Aspect-Oriented Programming）中用于在某个方法或字段被访问之前，进行拦截然后在之前或之后加入某些操作。拦截是AOP的一种实现策略。通俗点说，就是在执行一段代码（二、中的handler）之前或者之后，去执行另外一段代码。
+在单体模式下，整个应用是一个进程，应用一般只需要一个统一的安全认证模块来实现用户认证鉴权。例如用户登陆时，安全模块验证用户名和密码的合法性。假如合法，为用户生成一个唯一的 Session。将 SessionId 返回给客户端，客户端一般将 SessionId 以 Cookie 的形式记录下来，并在后续请求中传递 Cookie 给服务端来验证身份。为了避免 Session Id被第三者截取和盗用，客户端和应用之前应使用 TLS 加密通信，session 也会设置有过期时间。
 
-应用场景：鉴权、监控告警、公共参数处理
+客户端访问服务端时，服务端一般会用一个拦截器拦截请求，取出 session id，假如 id 合法，则可判断客户端登陆。然后查询用户的权限表，判断用户是否具有执行某次操作的权限。
 
-接下来用Go实现一个拦截器，假设有一个方法 handler(ctx context.Context) ，给这个方法赋予一个能力：允许在这个方法执行之前能够打印一行日志。即执行handler的每个操作，都需先经过interceptor。
+### **2. 微服务模式下的认证鉴权**
 
-# 二、定义
+在微服务模式下，一个整体的应用可能被拆分为多个微服务，之前只有一个服务端，现在会存在多个服务端。对于客户端的单个请求，为保证安全，需要跟每个微服务都要重复上面的过程。这种模式每个微服务都要去实现相同的校验逻辑，肯定是非常冗余的。
 
-**2.1 结构体**
+**用户身份认证**
 
-定义一个结构 interceptor 这个结构包含两个参数，一个 context 和 一个 handler
+为了避免每个服务端都进行重复认证，采用一个服务进行统一认证。所以考虑一个单点登录的方案，用户只需要登录一次，就可以访问所有微服务。一般在 api 的 gateway 层提供对外服务的入口，所以可以在 api gateway 层提供统一的用户认证。
 
-```go
-// 将 handler 单独定义成一种类型
-type handler func(ctx context.Context)
+**用户状态保持**
 
-type interceptor func(ctx context.Context, h handler)
+由于 http 是一个无状态的协议，前面说到了单体模式下通过 cookie 保存用户状态， cookie 一般存储于浏览器中，用来保存用户的信息。但是 cookie 是有状态的。客户端和服务端在一次会话期间都需要维护 cookie 或者 sessionId，在微服务环境下，我们期望服务的认证是无状态的。所以我们一般采用 token 认证的方式，而非 cookie。
+
+token 由服务端用自己的密钥加密生成，在客户端登录或者完成信息校验时返回给客户端，客户端认证成功后每次向服务端发送请求带上 token，服务端根据密钥进行解密，从而校验 token 的合法，假如合法则认证通过。token 这种方式的校验不需要服务端保存会话状态。方便服务扩展
+
+**标准的http协议是无状态的，无连接的**
+
+无连接：限制每次连接只处理一个请求。服务器处理完客户的请求，并收到客户的应答后，即断开连接
+
+无状态：HTTP 协议自 身不对请求和响应之间的通信状态进行保存。也就是说在 HTTP 这个 级别，协议对于发送过的请求或响应都不做持久化处理。主要是为了让 HTTP 协议尽可能简单，使得它能够处理大量事务。HTTP/1.1 引入 Cookie 来保存状态信息。
+
+1. **服务要设计为无状态的，这主要是从可伸缩性来考虑的。**
+
+2. 如果server是无状态的，那么对于客户端来说，就可以将请求发送到任意一台server上，然后就可以通过**负载均衡**等手段，实现**水平扩展**。
+
+3. 如果server是有状态的，那么就无法很容易地实现了，因为客户端需要始终把请求发到同一台server才行，所谓*“**session迁移”***等方案，也就是为了解决这个问题 
+
+### **3. grpc 认证鉴权**
+
+grpc-go 官方对于认证鉴权的介绍如下：https://github.com/grpc/grpc-go/blob/master/Documentation/grpc-auth-support.md
+
+通过官方介绍可知， grpc-go 认证鉴权是通过 tls + oauth2 实现的。这里不对 tls 和 oauth2 进行详细介绍，假如有不清楚的可以参考阮一峰老师的教程，介绍得比较清楚[tls](http://www.ruanyifeng.com/blog/2014/02/ssl_tls.html ) , [oauth2](http://www.ruanyifeng.com/blog/2019/04/oauth_design.html)
+
+下面我们就来具体看看 grpc-go 是如何实现认证鉴权的)
+
+grpc-go 官方 doc 说了这里关于 auth 的部分有 demo 放在 examples 目录下的 features 目录下。但是 demo 没有包括证书生成的步骤，这里我们自建一个 demo，从生成证书开始一步步进行 grpc 的认证讲解。
+
+# 二、代码实现
+
+生成私钥
+
+```shell
+openssl ecparam -genkey -name secp384r1 -out server.key
 ```
 
-**2.2 main函数**
+使用私钥生成证书
 
-```go
-func main() {
-    var ctx context.Context
-    var ceps []interceptor
-    
-  	// 申明赋值
-		// 为了实现目标，对 handler 的每个操作，都需要先经过 interceptor ，
-  	// 于是申明两个 interceptor 和 handler 的变量并赋值
-    
-    // 定义业务函数
-    var h = func(ctx context.Context) {
-        fmt.Println("do something ...")
-    }
-	
-    // 定义多个拦截器
-    var inter1 = func(ctx context.Context, h handler) {
-        // 执行拦截器
-        fmt.Println("interceptor1")
-        // 执行业务函数
-        h(ctx)
-    }
-    var inter2 = func(ctx context.Context, h handler) {
-        fmt.Println("interceptor2")
-        h(ctx)
-    }
-
-    ceps = append(ceps, inter1, inter2)
-
-    for _ , cep := range ceps {
-        cep(ctx, h)
-    }
-}
-/////////////////////////////////////////////////////
-interceptor1
-do something ...
-interceptor2
-do something ...
+```shell
+openssl req -new -x509 -sha256 -key server.key -out server.pem -days 3650
 ```
 
-handler执行了两次，与预期效果不同，希望无论打印多少次内容，应该保证handler只执行一次（也就是拦截多次，handler只有一次）。
+填写信息（注意 Common Name 要填写服务名）
 
-# 三、参考gPRC-go的example
-
-在 gRPC 中，大类可分为两种 RPC 方法，与拦截器的对应关系是：
-
-- 普通方法：一元拦截器（grpc.UnaryInterceptor）
-- 流方法：流拦截器（grpc.StreamInterceptor）
-
- helloworld demo 客户端的 main 函数，grpc.Dial —> DialContext —> chainUnaryClientInterceptors
-
-```go
-// chainUnaryClientInterceptors chains all unary client interceptors into one.
-// chainUnaryClientInterceptors 将所有的拦截器串接成一个拦截器
-func chainUnaryClientInterceptors(cc *ClientConn) {
-	interceptors := cc.dopts.chainUnaryInts
-	// Prepend dopts.unaryInt to the chaining interceptors if it exists, since unaryInt will
-	// be executed before any other chained interceptors.
-	if cc.dopts.unaryInt != nil {
-		interceptors = append([]UnaryClientInterceptor{cc.dopts.unaryInt}, interceptors...)
-	}
-	var chainedInt UnaryClientInterceptor
-	if len(interceptors) == 0 {
-		chainedInt = nil
-	} else if len(interceptors) == 1 {
-		chainedInt = interceptors[0]
-	} else {
-		chainedInt = func(ctx context.Context, method string, req, reply interface{}, cc *ClientConn, invoker UnaryInvoker, opts ...CallOption) error {
-			return interceptors[0](ctx, method, req, reply, cc, getChainUnaryInvoker(interceptors, 0, invoker), opts...)
-		}
-	}
-	cc.dopts.unaryInt = chainedInt
-}
+```shell
+Country Name (2 letter code) []:
+State or Province Name (full name) []:
+Locality Name (eg, city) []:
+Organization Name (eg, company) []:
+Organizational Unit Name (eg, section) []:
+Common Name (eg, fully qualified host name) []:
+helloauthEmail Address []:
 ```
 
-- ctx context.Context：请求上下文
-- req interface{}：RPC 方法的请求参数
-- info *UnaryServerInfo：RPC 方法的所有信息
-- handler UnaryHandler：RPC 方法本身
-
-接下里查看`getChainUnaryInvoker`函数：
-
-```go
-// getChainUnaryInvoker recursively generate the chained unary invoker.
-func getChainUnaryInvoker(interceptors []UnaryClientInterceptor, curr int, finalInvoker UnaryInvoker) UnaryInvoker {
-	if curr == len(interceptors)-1 {
-		return finalInvoker
-	}
-	return func(ctx context.Context, method string, req, reply interface{}, cc *ClientConn, opts ...CallOption) error {
-		return interceptors[curr+1](ctx, method, req, reply, cc, getChainUnaryInvoker(interceptors, curr+1, finalInvoker), opts...)
-	}
-}
-// 递归调用返回 UnaryInvoker 结构体，在UnaryInvoker实例化后会去调用第curr + 1个interceptors直至结束。
-// interceptor0-interceptor1-interceptor2-interceptor3-...-interceptorn-finalinvoke
-// 拦截器链会以递归遍历切片的方式递归调用所有拦截器，使请求依次通过这些拦截器，直到请求经过了所有的拦截器，
-// 最终抵达服务端请求处理的接口函数，处理完之后返回。
-// UnaryInvoker is called by UnaryClientInterceptor to complete RPCs.
-type UnaryInvoker func(ctx context.Context, method string, req, reply interface{}, cc *ClientConn, opts ...CallOption) error
-// 这里的 opts ...CallOption 参数：functional options API（详见基础）
-```
-
-返回值赋给`cc.dopts.unaryInt`,但没有立刻被调用。
-
-```go
-// 客户端调用SayHello
-err := c.cc.Invoke(ctx, "/helloworld.Greeter/SayHello", in, out, opts...)
-```
-
-在这里的`Invoke`进行调用
-
-```go
-// Invoke sends the RPC request on the wire and returns after response is
-// received.  This is typically called by generated code.
-//
-// All errors returned by Invoke are compatible with the status package.
-func (cc *ClientConn) Invoke(ctx context.Context, method string, args, reply interface{}, opts ...CallOption) error {
-	// allow interceptor to see all applicable call options, which means those
-	// configured as defaults from dial option as well as per-call options
-	opts = combine(cc.dopts.callOptions, opts)
-
-	if cc.dopts.unaryInt != nil {
-    // 这里是调用的入口，递归调用，一直到最后
-		return cc.dopts.unaryInt(ctx, method, args, reply, cc, invoke, opts...)
-	}
-	return invoke(ctx, method, args, reply, cc, opts...)
-}
-```
-
-# 四、最终实现
-
-**4.1 结构体**
-
-将原来的 handler 升级一下，成为 Invoker , 重新定义一个 handler ，用于在 Invoker 执行之前处理某些事情。interceptor 也需要更改一下，需要传入 invoker 和 handler
-
-```go
-type invoker func(ctx context.Context, interceptors []interceptor2 , h handler) error
-
-type handler func(ctx context.Context)
-// 拦截器
-type interceptor2 func(ctx context.Context, h handler, ivk invoker) error
-```
-
-**4.2 串联结构体**
-
-```go
-func getInvoker(ctx context.Context, interceptors []interceptor2 , cur int, ivk invoker) invoker{
-     if cur == len(interceptors) - 1 {
-        return ivk
-    }
-     return func(ctx context.Context, interceptors []interceptor2 , h handler) error{
-        return     interceptors[cur+1](ctx, h, getInvoker(ctx,interceptors, cur+1, ivk))
-    }
-}
-```
-
-**4.3 返回第一个 interceptor 作为入口**
-
-```go
-func getChainInterceptor(ctx context.Context, interceptors []interceptor2 , ivk invoker) interceptor2 {
-        if len(interceptors) == 0 {
-            return nil
-        }
-        if len(interceptors) == 1 {
-            return interceptors[0]
-        }
-        return func(ctx context.Context, h handler, ivk invoker) error {
-            return interceptors[0](ctx, h, getInvoker(ctx, interceptors, 0, ivk))
-        }
-    }
-```
-
-**4.4 最终实现**
-
-```go
-func main() {
-    var ctx context.Context
-    var ceps []interceptor2
-    // 拦截器执行函数
-    var h = func(ctx context.Context) {
-        fmt.Println("do something")
-    }
-    var inter1 = func(ctx context.Context, h handler, ivk invoker) error{
-        h(ctx)
-        return ivk(ctx,ceps,h)
-    }
-    var inter2 = func(ctx context.Context, h handler, ivk invoker) error{
-        h(ctx)
-        return ivk(ctx,ceps,h)
-    }
-
-    var inter3 = func(ctx context.Context, h handler, ivk invoker) error{
-        h(ctx)
-        return     ivk(ctx,ceps,h)
-    }
-
-    ceps = append(ceps, inter1, inter2, inter3)
-    // 定义业务函数
-    var ivk = func(ctx context.Context, interceptors []interceptor2 , h handler) error {
-        fmt.Println("invoker start")
-        return nil
-    }
-
-    cep := getChainInterceptor(ctx, ceps,ivk)
-    cep(ctx, h,ivk)
-
-}
-
-////////////////////////////////////////////////////////////
-do something
-do something
-do something
-invoker start
-```
-
-可以看到每次 Invoker 执行前我们都调用了 handler，但是 Invoker 只被调用了一次，完美地实现了我们的诉求，一个简化版的拦截器诞生了。
+生成完毕后，将证书文件放到 keys 目录下，整个项目目录结构如下：
