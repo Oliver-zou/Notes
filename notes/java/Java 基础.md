@@ -929,8 +929,19 @@ new 类名称();
 
 ## 概览
 
-```java
+`java.lang.Object`类是Java语言中的根类，即所有类的父类。它中描述的所有方法子类都可以使用。在对象实例化的时候，最终找的父类就是Object。
 
+如果一个类没有特别指定父类，	那么默认则继承自Object类。例如：
+
+```java
+public class MyClass /*extends Object*/ {
+  	// ...
+}
+```
+
+根据JDK源代码及Object类的API文档，Object类当中包含的方法有11个。
+
+```java
 public native int hashCode()
 
 public boolean equals(Object obj)
@@ -955,6 +966,91 @@ public final void wait() throws InterruptedException
 ```
 
 ## equals()
+
+**方法摘要**
+
+* `public boolean equals(Object obj)`：指示其他某个对象是否与此对象“相等”。
+
+调用成员方法equals并指定参数为另一个对象，则可以判断这两个对象是否是相同的。这里的“相同”有默认和自定义两种方式。
+
+**默认地址比较**
+
+如果没有覆盖重写equals方法，那么Object类中默认进行`==`运算符的对象地址比较，只要不是同一个对象，结果必然为false。
+
+**对象内容比较**
+
+如果希望进行对象的内容比较，即所有或指定的部分成员变量相同就判定两个对象相同，则可以覆盖重写equals方法。例如：
+
+```java
+import java.util.Objects;
+
+public class Person {	
+	private String name;
+	private int age;
+	
+    @Override
+    public boolean equals(Object o) {
+        // 如果对象地址一样，则认为相同
+        if (this == o)
+            return true;
+        // 如果参数为空，或者类型信息不一样，则认为不同
+        if (o == null || getClass() != o.getClass())
+            return false;
+        // 转换为当前类型
+        Person person = (Person) o;
+        // 要求基本类型相等，并且将引用类型交给java.util.Objects类的equals静态方法取用结果
+        return age == person.age && Objects.equals(name, person.name);
+    }
+}
+```
+
+这段代码充分考虑了对象为空、类型一致等问题，但方法内容并不唯一。大多数IDE都可以自动生成equals方法的代码内容。
+
+
+
+Person类默认继承了Object类,所以可以使用Object类的equals方法
+
+boolean equals(Object obj) 指示其他某个对象是否与此对象“相等”。
+
+equals方法源码:
+
+​    public boolean equals(Object obj) {
+
+​        return (this == obj);
+
+​    }
+
+​    参数:
+
+​        Object obj:可以传递任意的对象
+
+​        == 比较运算符,返回的是一个布尔值 true false
+
+​        基本数据类型:比较的是值
+
+​        引用数据类型:比价的是两个对象的地址值
+
+   this是谁?那个对象调用的方法,方法中的this就是那个对象;p1调用的equals方法所以this就是p1
+
+   obj是谁?传递过来的参数p2
+
+   this==obj -->p1==p2
+
+
+
+Object类的equals方法,默认比较的是两个对象的地址值,没有意义
+
+所以我们要重写equals方法,比较两个对象的属性(name,age)
+
+问题:
+
+​    隐含着一个多态
+
+​    多态的弊端:无法使用子类特有的内容(属性和方法)
+
+​    Object obj = p2 = new Person("古力娜扎",19);
+
+​    解决:可以使用向下转型(强转)把obj类型转换为Person
 
 **1. 等价关系**  
 
@@ -1078,6 +1174,12 @@ public int hashCode() {
 
 ## toString()
 
+**方法摘要**
+
+* `public String toString()`：返回该对象的字符串表示。
+
+toString方法返回该对象的字符串表示，其实该字符串内容就是对象的类型+@+内存地址值。
+
 默认返回 ToStringExample@4554617c 这种形式，其中 @ 后面的数值为散列码的无符号十六进制表示。
 
 ```java
@@ -1099,6 +1201,32 @@ System.out.println(example.toString());
 ```html
 ToStringExample@4554617c
 ```
+
+直接打印对象的地址值没有意义,需要重写Object类中的toString方法
+
+看一个类是否重写了toString,直接打印这个类的对象即可,如果没有重写toString方法那么打印的是对象的地址值。
+
+由于toString方法返回的结果是内存地址，而在开发中，经常需要按照对象的属性得到相应的字符串表现形式，因此也需要重写它。
+
+**覆盖重写**
+
+如果不希望使用toString方法的默认行为，则可以对它进行覆盖重写。例如自定义的Person类：
+
+```java
+public class Person {  
+    private String name;
+    private int age;
+
+    @Override
+    public String toString() {
+        return "Person{" + "name='" + name + '\'' + ", age=" + age + '}';
+    }
+
+    // 省略构造器与Getter Setter
+}
+```
+
+在IntelliJ IDEA中，可以点击`Code`菜单中的`Generate...`，也可以使用快捷键`alt+insert`，点击`toString()`选项。选择需要包含的成员变量并确定。
 
 ## clone()
 
@@ -1292,6 +1420,26 @@ e1.set(2, 222);
 System.out.println(e2.get(2)); // 2
 ```
 
+## Objects类
+
+在刚才IDEA自动重写equals代码中，使用到了`java.util.Objects`类，那么这个类是什么呢？
+
+在**JDK7**添加了一个Objects工具类，它提供了一些方法来操作对象，它由一些静态的实用方法组成，这些方法是null-save（空指针安全的）或null-tolerant（容忍空指针的），用于计算对象的hashcode、返回对象的字符串表示形式、比较两个对象。
+
+在比较两个对象的时候，Object的equals方法容易抛出空指针异常，而Objects类中的equals方法就优化了这个问题。方法如下：
+
+* `public static boolean equals(Object a, Object b)`:判断两个对象是否相等。
+
+我们可以查看一下源码，学习一下：
+
+~~~java
+public static boolean equals(Object a, Object b) {  
+    return (a == b) || (a != null && a.equals(b));  
+}
+~~~
+
+
+
 # 六、面向对象三大特征-封装
 
 方法和关键字均是封装特性的体现：将细节信息隐藏，对外界不可见，只管调用。
@@ -1370,20 +1518,23 @@ public class AccessWithInnerClassExample {
 
 ## 变量与方法
 
-```
 在继承的关系中，“子类就是一个父类”。也就是说，子类可以被当做父类看待。
+
 例如父类是员工，子类是讲师，那么“讲师就是一个员工”。关系：is-a。
 
 定义父类的格式：（一个普通的类定义）
+
 public class 父类名称 {
-    // ...
+
+​    // ...
 }
 
 定义子类的格式：
+
 public class 子类名称 extends 父类名称 {
-    // ...
+
+​    // ...
 }
-```
 
 注意事项：
 
@@ -2079,17 +2230,15 @@ ac2.func1();
        }
    
    }
-   
-   // 父类方法
    ```
-
-7. 接口与接口之间是多继承的。
+   
+7. 接口与接口之间是多继承的（类与类之间是单继承的。直接父类只有一个。类与接口之间是多实现的。一个类可以实现多个接口。）
 
    ```java
    public interface MyInterface extends MyInterfaceA, MyInterfaceB {
    
        public abstract void method();
-   
+   s
        @Override
        public default void methodDefault() {
    
@@ -2101,6 +2250,15 @@ ac2.func1();
 
    1. 多个父接口当中的抽象方法如果重复，没关系。
    2. 多个父接口当中的默认方法如果重复，那么子接口必须进行默认方法的覆盖重写，【而且带着default关键字】。
+
+接口与具体的实现类之间也存在多态性
+
+```java
+// 左边是接口名称，右边是实现类名称，这就是多态写法
+List<String> list = new ArrayList<>();
+```
+
+
 
 **3. 比较**  
 
@@ -2133,11 +2291,19 @@ ac2.func1();
 
 ## 概述
 
-继承是多态的前提，如果没有继承也就没有多态。
+继承或实现是多态的前提，如果没有继承或实现也就没有多态。类与类的继承/接口与接口的继承/接口与实现类。
+
+用继承/实现举个例子：
 
 <div align="center"> <img src="../../pics/148561c8-89bc-446b-8456-9d6b0da8d60b.png" width="500"/> </div><br>
 
-代码当中体现多态性，其实就是一句话：父类引用指向子类对象。格式：
+**补充**
+
+接口的出现是为了更好的实现多态，而多态的实现不一定需要依赖于接口。多态一般有三种，接口的多态，类的多态，方法的多态。方法的多态就类似于我们方法的重载。类的多态无非就是子类继承父类，并重写父类的方法，从而获得不同的实现。那么再来看接口，接口跟类基本是一样，实现接口并实现接口的方法。。不同的类实现接口可以有不同的方式从而表现不同的行为，就是接口的多态性啊。
+
+
+
+代码当中体现多态性，其实就是一句话：父类引用指向子类对象（对于接口，则是左接口右实现类）。格式：
 
 父类名称 对象名 = new 子类名称();
 
@@ -2146,6 +2312,26 @@ ac2.func1();
 接口名称 对象名 = new 实现类名称();
 
 ```java
+public class Fu {
+
+    public void method() {
+        System.out.println("父类方法");
+    }
+
+    public void methodFu() {
+        System.out.println("父类特有方法");
+    }
+
+}
+
+public class Zi extends Fu {
+
+    @Override
+    public void method() {
+        System.out.println("子类方法");
+    }
+}
+
 public class Demo01Multi {
 
     public static void main(String[] args) {
@@ -2158,6 +2344,9 @@ public class Demo01Multi {
         obj.methodFu();
     }
 }
+//////////////////////////////////////////////////
+子类方法
+父类特有方法
 ```
 
 左“父”右“子”就是多态！！！！！！！
@@ -2226,8 +2415,7 @@ public class Demo01MultiField {
 }
 ```
 
-在多态的代码当中，成员**方法**的访问规则是：
-    看new的是谁，就优先用谁，没有则向上找。
+在多态的代码当中，成员**方法**的访问规则是：看new的是谁，就优先用谁，没有则向上找。
 
 口诀：编译看左边，运行看右边。
 
@@ -2728,6 +2916,190 @@ public class Outer {
 
 }
 ```
+
+
+
+## 局部内部类
+
+如果一个类是定义在一个方法内部的，那么这就是一个局部内部类。“局部”：只有当前所属的方法才能使用它，出了这个方法外面就不能用了。
+
+定义格式：
+
+修饰符 class 外部类名称 {
+
+​    修饰符 返回值类型 外部类方法名称(参数列表) {
+
+​        class 局部内部类名称 {
+
+​            // ...
+​        }
+
+​    }
+
+}
+
+定义一个类的时候，权限修饰符规则：
+
+1. 外部类：public / (default)
+2. 成员内部类：public / protected / (default) / private
+3. 局部内部类：什么都不能写
+
+```java
+class Outer {
+
+    public void methodOuter() {
+        class Inner { // 局部内部类
+            final int num = 10;
+            public void methodInner() {
+                System.out.println(num); // 10
+            }
+        }
+
+        Inner inner = new Inner();
+        inner.methodInner();
+    }
+
+}
+
+```
+
+
+
+局部内部类，如果希望访问所在方法的局部变量，那么这个局部变量必须是【有效final的】。
+
+备注：从Java 8+开始，只要局部变量事实不变，那么final关键字可以省略。
+
+原因：
+1. new出来的对象在堆内存当中。
+2. 局部变量是跟着方法走的，在栈内存当中。
+3. 方法运行结束之后，立刻出栈，局部变量就会立刻消失。
+4. 但是new出来的对象会在堆当中持续存在，直到垃圾回收消失。
+
+```java
+public class MyOuter {
+
+    public void methodOuter() {
+        int num = 10; // 所在方法的局部变量
+
+        class MyInner {   // 局部内部类生命周期长，局部变量可能早就出栈了，需要留下唯一不变的数据
+            public void methodInner() {
+                System.out.println(num);
+            }
+        }
+    }
+
+}
+```
+
+ 
+
+## 匿名内部类
+
+如果接口的实现类（或者是父类的子类）只需要使用唯一的一次，那么这种情况下就可以省略掉该类的定义，而改为使用【匿名内部类】。
+
+匿名内部类的定义格式：
+
+接口名称 对象名 = new 接口名称() {
+
+​    // 覆盖重写所有抽象方法
+
+};
+
+对格式“new 接口名称() {...}”进行解析：
+1. new代表创建对象的动作
+2. 接口名称就是匿名内部类需要实现哪个接口
+3. {...}这才是匿名内部类的内容
+
+另外还要注意几点问题：
+1. 匿名内部类，在【创建对象】的时候，只能使用唯一一次。
+
+  如果希望多次创建对象，而且类的内容一样的话，那么就需要使用单独定义的实现类了。
+
+2. 匿名对象，在【调用方法】的时候，只能调用唯一一次。
+
+  如果希望同一个对象，调用多次方法，那么必须给对象起个名字。
+
+3. 匿名内部类是省略了【实现类/子类名称】，但是匿名对象是省略了【对象名称】
+
+  强调：匿名内部类和匿名对象不是一回事！！！
+
+```java
+public interface MyInterface {
+
+    void method1(); // 抽象方法
+
+    void method2();
+
+}
+
+public class MyInterfaceImpl implements MyInterface {
+    @Override
+    public void method1() {
+        System.out.println("实现类覆盖重写了方法！111");
+    }
+
+    @Override
+    public void method2() {
+        System.out.println("实现类覆盖重写了方法！222");
+    }
+}
+
+public class DemoMain {
+
+    public static void main(String[] args) {
+//        MyInterface obj = new MyInterfaceImpl();
+//        obj.method();
+
+//        MyInterface some = new MyInterface(); // 错误写法！
+
+        // 使用匿名内部类，但不是匿名对象，对象名称就叫objA
+        MyInterface objA = new MyInterface() {
+            @Override
+            public void method1() {
+                System.out.println("匿名内部类实现了方法！111-A");
+            }
+
+            @Override
+            public void method2() {
+                System.out.println("匿名内部类实现了方法！222-A");
+            }
+        };
+        objA.method1();
+        objA.method2();
+        System.out.println("=================");
+
+        // 使用了匿名内部类，而且省略了对象名称，也是匿名对象
+        new MyInterface() {
+            @Override
+            public void method1() {
+                System.out.println("匿名内部类实现了方法！111-B");
+            }
+
+            @Override
+            public void method2() {
+                System.out.println("匿名内部类实现了方法！222-B");
+            }
+        }.method1();
+        // 因为匿名对象无法调用第二次方法，所以需要再创建一个匿名内部类的匿名对象
+        new MyInterface() {
+            @Override
+            public void method1() {
+                System.out.println("匿名内部类实现了方法！111-B");
+            }
+
+            @Override
+            public void method2() {
+                System.out.println("匿名内部类实现了方法！222-B");
+            }
+        }.method2();
+    }
+
+}
+```
+
+PS. 任何一种类型（类/接口）可以作为成员变量类型；接口可以作为返回值或方法的参数
+
+
 
 # 参考资料
 
