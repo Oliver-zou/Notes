@@ -4,6 +4,8 @@
   - [1.RPC概述](#1-RPC概述)
   - [2.gRPC](#2-gRPC)
   - [3.Protocol Buffers](#3-Protocol Buffers)
+  - [4.客户端与服务端是如何交互的](#4-客户端与服务端是如何交互的)
+  - [5.HTTP/2](#5-HTTP/2)
 * [二、环境安装](#二-环境安装)
 
 - [三、Demo及其源码分析](#三-Demo及其源码分析)
@@ -39,7 +41,7 @@
 
 **2.1 概念**
 
-gRPC 是Google开发的一款高性能、开源通用的 RPC 框架，其主要面向移动应用开发并基于HTTP/2协议标准而设计，基于ProtoBuf(Protocol Buffers)序列化协议开发，且支持众多开发语言。该框架具有以下特点：
+gRPC 是Google开发的一款高性能、开源通用的 RPC 框架，其主要面向移动应用开发并基于HTTP/2协议标准而设计（带来诸如双向流、流控、头部压缩、单 TCP 连接上的多复用请求等特性。这些特性使得其在移动设备上表现更好，更省电和节省空间占用），基于ProtoBuf(Protocol Buffers)序列化协议开发，且支持众多开发语言。该框架具有以下特点：
 
 - ProtoBuf作为IDL进行数据编码，提高数据压缩率
 - 使用HTTP2.0弥补HTTP1.1的不足之处
@@ -47,9 +49,23 @@ gRPC 是Google开发的一款高性能、开源通用的 RPC 框架，其主要�
 
 <div align="center"> <img src="../../pics/16067211954087.png" width="500px"> </div><br>
 
-**2.2 gRPC主要有4种请求／响应模式：**
+**2.2 调用模型**
+
+1、客户端（gRPC Stub）调用 A 方法，发起 RPC 调用。
+
+2、对请求信息使用 Protobuf 进行对象序列化压缩（IDL）。
+
+3、服务端（gRPC Server）接收到请求后，解码请求体，进行业务逻辑处理并返回。
+
+4、对响应结果使用 Protobuf 进行对象序列化压缩（IDL）。
+
+5、客户端接受到服务端响应，解码请求体。回调被调用的 A 方法，唤醒正在等待响应（阻塞）的客户端调用并返回响应结果。
+
+**2.3 gRPC主要有4种请求／响应模式：**
 
 streaming 在 http/1.x 已经出现了，http2 实现了 streaming 的多路复用。grpc 是基于 http2 实现的。所以 grpc 也实现了 streaming 的多路复用，所以 grpc同时支持单边流和双向流
+
+具体细分：
 
 (1) 单项 RPC（Simple RPC）
 
@@ -87,11 +103,11 @@ rpc BidiHello(stream HelloRequest) returns (stream HelloResponse){
 }
 ```
 
-2.3 [接口设计](https://github.com/grpc/grpc/blob/master/CONCEPTS.md)
+**2.4 [接口设计](https://github.com/grpc/grpc/blob/master/CONCEPTS.md)**
 
 对于远程服务的调用，grpc约定clien 和server首先需约定好service的结构，包括一系列方法的组合，每个方法定义、参数、返回体等。对这个结构的描述，grpc 默认是用Protocol Buffer实现的。
 
-2.4 拦截器
+**2.5 拦截器**
 
 客户端和服务端都可以在初始化时注册拦截器，拦截器也可以叫做中间件，本质就是一个请求的处理方法，我们把用户从请求到响应的整个过程分发到多个中间件中去处理，这样做的目的是提高代码的灵活性，动态可扩展的。
 
@@ -168,8 +184,84 @@ gRPC 默认使用 protocol buffers，这是 Google 开源的一套成熟的结�
   }
   ```
 
+## 4. 客户端与服务端是如何交互的
 
-## 4. HTTP/2
+在开始分析之前，我们要先 gRPC 的调用有一个初始印象。那么最简单的就是对 Client 端调用 Server 端进行抓包去剖析，看看整个过程中它都做了些什么事。如下图：
+
+<div align="center"> <img src="../../pics/16081047414336.png" width="500px"> </div><br>
+
+**Magic**
+
+<div align="center"> <img src="../../pics/16081048216889.png" width="500px"> </div><br>
+
+Magic 帧的主要作用是建立 HTTP/2 请求的前言。在 HTTP/2 中，要求两端都要发送一个连接前言，作为对所使用协议的最终确认，并确定 HTTP/2 连接的初始设置，客户端和服务端各自发送不同的连接前言。
+
+而上图中的 Magic 帧是客户端的前言之一，内容为 `PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n`，以确定启用 HTTP/2 连接。
+
+**SETTINGS**
+
+<div align="center"> <img src="../../pics/16081048723096.png" width="500px"> </div><br>
+
+SETTINGS 帧的主要作用是设置这一个连接的参数，作用域是整个连接而并非单一的流。
+
+而上图的 SETTINGS 帧都是空 SETTINGS 帧，图一是客户端连接的前言（Magic 和 SETTINGS 帧分别组成连接前言）。图二是服务端的。另外我们从图中可以看到多个 SETTINGS 帧，这是为什么呢？是因为发送完连接前言后，客户端和服务端还需要有一步互动确认的动作。对应的就是带有 ACK 标识 SETTINGS 帧。
+
+**HEADERS**
+
+<div align="center"> <img src="../../pics/16081049475595.png" width="500px"> </div><br>
+
+HEADERS 帧的主要作用是存储和传播 HTTP 的标头信息。我们关注到 HEADERS 里有一些眼熟的信息，分别如下：
+
+- method：POST
+- scheme：http
+- path：/proto.SearchService/Search
+- authority：:10001
+- content-type：application/grpc
+- user-agent：grpc-go/1.20.0-dev
+
+你会发现这些东西非常眼熟，其实都是 gRPC 的基础属性，实际上远远不止这些，只是设置了多少展示多少。例如像平时常见的 `grpc-timeout`、`grpc-encoding` 也是在这里设置的。
+
+**DATA**
+
+<div align="center"> <img src="../../pics/16081050091012.png" width="500px"> </div><br>
+
+DATA 帧的主要作用是装填主体信息，是数据帧。而在上图中，可以很明显看到我们的请求参数 gRPC 存储在里面。只需要了解到这一点就可以了。
+
+**HEADERS, DATA, HEADERS**
+
+<div align="center"> <img src="../../pics/16081050836555.png" width="500px"> </div><br>
+
+在上图中 HEADERS 帧比较简单，就是告诉我们 HTTP 响应状态和响应的内容格式。
+
+<div align="center"> <img src="../../pics/16081051263596.png" width="500px"> </div><br>
+
+在上图中 DATA 帧主要承载了响应结果的数据集，图中的 gRPC Server 就是我们 RPC 方法的响应结果。
+
+<div align="center"> <img src="../../pics/16081051726957.png" width="500px"> </div><br>
+
+在上图中 HEADERS 帧主要承载了 gRPC 状态 和 gRPC 状态消息，图中的 `grpc-status` 和 `grpc-message` 就是我们的 gRPC 调用状态的结果。
+
+**WINDOW_UPDATE**
+
+主要作用是管理和流的窗口控制。通常情况下打开一个连接后，服务器和客户端会立即交换 SETTINGS 帧来确定流控制窗口的大小。默认情况下，该大小设置为约 65 KB，但可通过发出一个 WINDOW_UPDATE 帧为流控制设置不同的大小。
+
+<div align="center"> <img src="../../pics/1608105248526.png" width="500px"> </div><br>
+
+**PING/PONG**
+
+主要作用是判断当前连接是否仍然可用，也常用于计算往返时间。其实也就是 PING/PONG
+
+**小结**
+
+<div align="center"> <img src="../../pics/16081053276324.png" width="500px"> </div><br>
+
+- 在建立连接之前，客户端/服务端都会发送**连接前言**（Magic+SETTINGS），确立协议和配置项。
+- 在传输数据时，是会涉及滑动窗口（WINDOW_UPDATE）等流控策略的。
+- 传播 gRPC 附加信息时，是基于 HEADERS 帧进行传播和设置；而具体的请求/响应数据是存储的 DATA 帧中的。
+- 请求/响应结果会分为 HTTP 和 gRPC 状态响应两种类型。
+- 客户端发起 PING，服务端就会回应 PONG，反之亦可。
+
+## 5. HTTP/2
 
 - grpc 的协议层是基于 HTTP/2 设计的，因此grpc协议支持流量控制也是基于 http2 的 flow control 机制。
 
@@ -433,16 +525,24 @@ func NewServer(opt ...ServerOption) *Server {
 		o.apply(&opts)
 	}
 	s := &Server{
+        // 监听地址列表
 		lis:      make(map[net.Listener]bool),
+        // 服务选项：Credentials、Interceptor以及一些基础配置
 		opts:     opts,
+        // 客户端连接句柄列表
 		conns:    make(map[transport.ServerTransport]bool),
+        // 服务信息映射
 		services: make(map[string]*serviceInfo),
-		quit:     grpcsync.NewEvent(),
-		done:     grpcsync.NewEvent(),
-		czData:   new(channelzData),
+		// 退出信号
+        quit:     grpcsync.NewEvent(),
+		// 完成信号
+        done:     grpcsync.NewEvent(),
+		// 用于存储ClienConn、addConn、和Server的channelz相关数据
+        czData:   new(channelzData),
 	}
 	chainUnaryServerInterceptors(s)
 	chainStreamServerInterceptors(s)
+    // cv：当优雅退出时，会等待这个信号量，知道所有RPC请求都处理并断开才会继续处理
 	s.cv = sync.NewCond(&s.mu)
 	if EnableTracing {
 		_, file, line, _ := runtime.Caller(1)
@@ -792,6 +892,17 @@ func main() {
 	log.Printf("Greeting: %s", r.GetMessage())
 }
 ```
+
+`grpc.Dial` 方法实际上是对于 `grpc.DialContext` 的封装，区别在于 `ctx` 是直接传入 `context.Background`。其主要功能是**创建**与给定目标的客户端连接，其承担了以下职责：
+
+- 初始化 ClientConn
+- 初始化（基于进程 LB）负载均衡配置
+- 初始化 channelz
+- 初始化重试规则和客户端一元/流式拦截器
+- 初始化协议栈上的基础信息
+- 相关 context 的超时控制
+- 初始化并解析地址信息
+- 创建与服务端之间的连接
 
 2.1 创建一个客户端连接conn
 
@@ -1263,4 +1374,6 @@ http://doc.oschina.net/grpc?t=58008
 http://doc.oschina.net/grpc?t=60133
 
 https://smallnest.gitbooks.io/go-rpc-programming-guide/content/
+
+https://mp.weixin.qq.com/s/o-K7G9ywCdmW7et6Q4WMeA
 

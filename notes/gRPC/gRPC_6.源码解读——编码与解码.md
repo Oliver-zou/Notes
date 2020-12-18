@@ -11,71 +11,202 @@
 
 # 一、概述
 
-拦截器，拦截器是动态拦截Action调用的对象。它提供了一种机制使开发者可以定义在一个Action执行的前后执行的代码，也可以在一个Action执行前阻止其执行。同时也提供了一种可以提取Action中可重用的部分的方式。
+一般的协议都会包括协议头和协议体，对于业务而言，一般只关心需要发送的业务数据。所以，协议头的内容一般是框架自动帮忙填充。将业务数据包装成指定协议格式的数据包就是编码的过程，从指定协议格式中的数据包中取出业务数据的过程就是解码的过程。
 
-拦截器在AOP（Aspect-Oriented Programming）中用于在某个方法或字段被访问之前，进行拦截然后在之前或之后加入某些操作。拦截是AOP的一种实现策略。通俗点说，就是在执行一段代码（二、中的handler）之前或者之后，去执行另外一段代码。
+每个 rpc 框架基本都有自己的编解码器，下面我们就来说说 grpc 的编解码过程。
 
-应用场景：鉴权、监控告警、公共参数处理
+# 二、grpc 解码
 
-接下来用Go实现一个拦截器，假设有一个方法 handler(ctx context.Context) ，给这个方法赋予一个能力：允许在这个方法执行之前能够打印一行日志。即执行handler的每个操作，都需先经过interceptor。
-
-# 二、定义
-
-**2.1 结构体**
-
-定义一个结构 interceptor 这个结构包含两个参数，一个 context 和 一个 handler
-
-```go
-// 将 handler 单独定义成一种类型
-type handler func(ctx context.Context)
-
-type interceptor func(ctx context.Context, h handler)
-```
-
-**2.2 main函数**
+从helloworld demo 中 server 的 main 函数入手
 
 ```go
 func main() {
-    var ctx context.Context
-    var ceps []interceptor
-    
-  	// 申明赋值
-		// 为了实现目标，对 handler 的每个操作，都需要先经过 interceptor ，
-  	// 于是申明两个 interceptor 和 handler 的变量并赋值
-    
-    // 定义业务函数
-    var h = func(ctx context.Context) {
-        fmt.Println("do something ...")
+    lis, err := net.Listen("tcp", port)
+    if err != nil {
+        log.Fatalf("failed to listen: %v", err)
     }
-	
-    // 定义多个拦截器
-    var inter1 = func(ctx context.Context, h handler) {
-        // 执行拦截器
-        fmt.Println("interceptor1")
-        // 执行业务函数
-        h(ctx)
-    }
-    var inter2 = func(ctx context.Context, h handler) {
-        fmt.Println("interceptor2")
-        h(ctx)
-    }
-
-    ceps = append(ceps, inter1, inter2)
-
-    for _ , cep := range ceps {
-        cep(ctx, h)
+    s := grpc.NewServer()
+    pb.RegisterGreeterServer(s, &server{})
+    if err := s.Serve(lis); err != nil {
+        log.Fatalf("failed to serve: %v", err)
     }
 }
-/////////////////////////////////////////////////////
-interceptor1
-do something ...
-interceptor2
-do something ...
 ```
 
-handler执行了两次，与预期效果不同，希望无论打印多少次内容，应该保证handler只执行一次（也就是拦截多次，handler只有一次）。
+在 s.Serve(lis) ——> s.handleRawConn(rawConn) —— > s.serveStreams(st) ——> s.handleStream(st, stream, s.traceInfo(st, stream)) ——> s.processUnaryRPC(t, stream, srv, md, trInfo) 方法中有一段代码：
 
-# 三、参考gPRC-go的example
+```go
+sh := s.opts.statsHandler
+...
+df := func(v interface{}) error {
+        if err := s.getCodec(stream.ContentSubtype()).Unmarshal(d, v); err != nil {
+            return status.Errorf(codes.Internal, "grpc: error unmarshalling request: %v", err)
+        }
+        if sh != nil {
+            sh.HandleRPC(stream.Context(), &stats.InPayload{
+                RecvTime:   time.Now(),
+                Payload:    v,
+                WireLength: payInfo.wireLength,
+                Data:       d,
+                Length:     len(d),
+            })
+        }
+        if binlog != nil {
+            binlog.Log(&binarylog.ClientMessage{
+                Message: d,
+            })
+        }
+        if trInfo != nil {
+            trInfo.tr.LazyLog(&payload{sent: false, msg: v}, true)
+        }
+        return nil
+}
+```
+
+这段代码的逻辑先调 getCodec 获取解包类，然后调用这个类的 Unmarshal 方法进行解包。将业务数据取出来，然后调用 handler 进行处理。
+
+```go
+func (s *Server) getCodec(contentSubtype string) baseCodec {
+    if s.opts.codec != nil {
+        return s.opts.codec
+    }
+    if contentSubtype == "" {
+        return encoding.GetCodec(proto.Name)
+    }
+    codec := encoding.GetCodec(contentSubtype)
+    if codec == nil {
+        return encoding.GetCodec(proto.Name)
+    }
+    return codec
+}
+```
+
+来看 getCodec 这个方法，它是通过 contentSubtype 这个字段来获取解包类的。假如不设置 contentSubtype ，那么默认会用名字为 proto 的解码器。
+
+我们来看看 contentSubtype 是如何设置的。之前说到了 grpc 的底层默认是基于 http2 的。在 serveHttp 时调用了 NewServerHandlerTransport 这个方法来创建一个 ServerTransport，然后我们发现，其实就是根据 content-type 这个字段去生成的。
+
+```go
+func NewServerHandlerTransport(w http.ResponseWriter, r *http.Request, stats stats.Handler) (ServerTransport, error) {
+    ...
+    contentType := r.Header.Get("Content-Type")
+    // TODO: do we assume contentType is lowercase? we did before
+    contentSubtype, validContentType := contentSubtype(contentType)
+    if !validContentType {
+        return nil, errors.New("invalid gRPC request content-type")
+    }
+    if _, ok := w.(http.Flusher); !ok {
+        return nil, errors.New("gRPC requires a ResponseWriter supporting http.Flusher")
+    }
+    st := &serverHandlerTransport{
+        rw:             w,
+        req:            r,
+        closedCh:       make(chan struct{}),
+        writes:         make(chan func()),
+        contentType:    contentType,
+        contentSubtype: contentSubtype,
+        stats:          stats,
+    }
+}
+```
+
+来看看 contentSubtype 这个方法 。
+
+```go
+...
+baseContentType = "application/grpc"
+...
+func contentSubtype(contentType string) (string, bool) {
+    if contentType == baseContentType {
+        return "", true
+    }
+    if !strings.HasPrefix(contentType, baseContentType) {
+        return "", false
+    }
+    // guaranteed since != baseContentType and has baseContentType prefix
+    switch contentType[len(baseContentType)] {
+    case '+', ';':
+        // this will return true for "application/grpc+" or "application/grpc;"
+        // which the previous validContentType function tested to be valid, so we
+        // just say that no content-subtype is specified in this case
+        return contentType[len(baseContentType)+1:], true
+    default:
+        return "", false
+    }
+}
+```
+
+可以看到 grpc 协议默认以 application/grpc 开头，假如不以这个开头会返回错误，假如我们想使用 json 的解码器，应该设置 content-type = application/grpc+json 。下面是一个基于 grpc 协议的请求 request ：
+
+```http
+HEADERS (flags = END_HEADERS)
+:method = POST
+:scheme = http
+:path = /google.pubsub.v2.PublisherService/CreateTopic
+:authority = pubsub.googleapis.com
+grpc-timeout = 1S
+content-type = application/grpc+proto
+grpc-encoding = gzip
+authorization = Bearer y235.wef315yfh138vh31hv93hv8h3v
+DATA (flags = END_STREAM)
+<Length-Prefixed Message>
+```
+
+详细可参考 [proto-http2](https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md)
+
+怎么拿的呢，再看一下 encoding.getCodec 方法
+
+```go
+func GetCodec(contentSubtype string) Codec {
+    return registeredCodecs[contentSubtype]
+}
+```
+
+它其实取得是 registeredCodecs 这个 map 中的 codec，这个 map 是 RegisterCodec 方法注册进去的。
+
+```go
+var registeredCodecs = make(map[string]Codec)
+func RegisterCodec(codec Codec) {
+    if codec == nil {
+        panic("cannot register a nil Codec")
+    }
+    if codec.Name() == "" {
+        panic("cannot register Codec with empty string result for Name()")
+    }
+    contentSubtype := strings.ToLower(codec.Name())
+    registeredCodecs[contentSubtype] = codec
+}
+```
+
+毫无疑问， encoding 目录的 proto 包下肯定在初始化时调用注册方法了。果然
+
+```go
+func init() {
+    encoding.RegisterCodec(codec{})
+}
+```
+
+绕了一圈，调用的其实是 proto 的 Unmarshal 方法，如下：
+
+```go
+func (codec) Unmarshal(data []byte, v interface{}) error {
+    protoMsg := v.(proto.Message)
+    protoMsg.Reset()
+    if pu, ok := protoMsg.(proto.Unmarshaler); ok {
+        // object can unmarshal itself, no need for buffer
+        return pu.Unmarshal(data)
+    }
+    cb := protoBufferPool.Get().(*cachedProtoBuffer)
+    cb.SetBuf(data)
+    err := cb.Unmarshal(protoMsg)
+    cb.SetBuf(nil)
+    protoBufferPool.Put(cb)
+    return err
+}
+```
+
+
+
+
 
 在 gRPC 中，大类可分为两种 RPC 方法，与拦截器的对应关系是：
 
@@ -161,90 +292,90 @@ func (cc *ClientConn) Invoke(ctx context.Context, method string, args, reply int
 }
 ```
 
-# 四、最终实现
+# 三、grpc 编码
 
-**4.1 结构体**
+在剖析解码代码的基础上，编码代码就很轻松了，其实直接找到 encoding 目录的 proto 包，看 Marshal 方法在哪儿被调用就行了。
 
-将原来的 handler 升级一下，成为 Invoker , 重新定义一个 handler ，用于在 Invoker 执行之前处理某些事情。interceptor 也需要更改一下，需要传入 invoker 和 handler
+于是我们很快就找到了调用路径，也是这个路径：
+
+s.Serve(lis) ——> s.handleRawConn(rawConn) —— > s.serveStreams(st) ——> s.handleStream(st, stream, s.traceInfo(st, stream)) ——> s.processUnaryRPC(t, stream, srv, md, trInfo)
+
+processUnaryRPC 方法中有一段 server 发送响应数据的代码。其实也就是这一行：
 
 ```go
-type invoker func(ctx context.Context, interceptors []interceptor2 , h handler) error
-
-type handler func(ctx context.Context)
-// 拦截器
-type interceptor2 func(ctx context.Context, h handler, ivk invoker) error
+if err := s.sendResponse(t, stream, reply, cp, opts, comp); err != nil {
 ```
 
-**4.2 串联结构体**
+其实也能猜到，发送数据给 client 之前肯定要编码。果然调用了 encode 方法
 
 ```go
-func getInvoker(ctx context.Context, interceptors []interceptor2 , cur int, ivk invoker) invoker{
-     if cur == len(interceptors) - 1 {
-        return ivk
+func (s *Server) sendResponse(t transport.ServerTransport, stream *transport.Stream, msg interface{}, cp Compressor, opts *transport.Options, comp encoding.Compressor) error {
+    data, err := encode(s.getCodec(stream.ContentSubtype()), msg)
+    if err != nil {
+        grpclog.Errorln("grpc: server failed to encode response: ", err)
+        return err
     }
-     return func(ctx context.Context, interceptors []interceptor2 , h handler) error{
-        return     interceptors[cur+1](ctx, h, getInvoker(ctx,interceptors, cur+1, ivk))
-    }
+    ...
 }
 ```
 
-**4.3 返回第一个 interceptor 作为入口**
+来看一下 encode
 
 ```go
-func getChainInterceptor(ctx context.Context, interceptors []interceptor2 , ivk invoker) interceptor2 {
-        if len(interceptors) == 0 {
-            return nil
-        }
-        if len(interceptors) == 1 {
-            return interceptors[0]
-        }
-        return func(ctx context.Context, h handler, ivk invoker) error {
-            return interceptors[0](ctx, h, getInvoker(ctx, interceptors, 0, ivk))
-        }
+func encode(c baseCodec, msg interface{}) ([]byte, error) {
+    if msg == nil { // NOTE: typed nils will not be caught by this check
+        return nil, nil
     }
-```
-
-**4.4 最终实现**
-
-```go
-func main() {
-    var ctx context.Context
-    var ceps []interceptor2
-    // 拦截器执行函数
-    var h = func(ctx context.Context) {
-        fmt.Println("do something")
+    b, err := c.Marshal(msg)
+    if err != nil {
+        return nil, status.Errorf(codes.Internal, "grpc: error while marshaling: %v", err.Error())
     }
-    var inter1 = func(ctx context.Context, h handler, ivk invoker) error{
-        h(ctx)
-        return ivk(ctx,ceps,h)
+    if uint(len(b)) > math.MaxUint32 {
+        return nil, status.Errorf(codes.ResourceExhausted, "grpc: message too large (%d bytes)", len(b))
     }
-    var inter2 = func(ctx context.Context, h handler, ivk invoker) error{
-        h(ctx)
-        return ivk(ctx,ceps,h)
-    }
-
-    var inter3 = func(ctx context.Context, h handler, ivk invoker) error{
-        h(ctx)
-        return     ivk(ctx,ceps,h)
-    }
-
-    ceps = append(ceps, inter1, inter2, inter3)
-    // 定义业务函数
-    var ivk = func(ctx context.Context, interceptors []interceptor2 , h handler) error {
-        fmt.Println("invoker start")
-        return nil
-    }
-
-    cep := getChainInterceptor(ctx, ceps,ivk)
-    cep(ctx, h,ivk)
-
+    return b, nil
 }
-
-////////////////////////////////////////////////////////////
-do something
-do something
-do something
-invoker start
 ```
 
-可以看到每次 Invoker 执行前我们都调用了 handler，但是 Invoker 只被调用了一次，完美地实现了我们的诉求，一个简化版的拦截器诞生了。
+它调用了 c.Marshal 方法， Marshal 方法其实是 baseCodec 定义的一个通用抽象方法
+
+```go
+type baseCodec interface {
+    Marshal(v interface{}) ([]byte, error)
+    Unmarshal(data []byte, v interface{}) error
+}
+```
+
+proto 实现了 baseCodec，前面说到了通过 s.getCodec(stream.ContentSubtype(),msg) 获取到的其实是 contentType 里面设置的协议名称，不设置的话默认取 proto 的编码器。所以最终是调用了 proto 包下的 Marshal 方法，如下：
+
+```go
+func (codec) Marshal(v interface{}) ([]byte, error) {
+    if pm, ok := v.(proto.Marshaler); ok {
+        // object can marshal itself, no need for buffer
+        return pm.Marshal()
+    }
+    cb := protoBufferPool.Get().(*cachedProtoBuffer)
+    out, err := marshal(v, cb)
+    // put back buffer and lose the ref to the slice
+    cb.SetBuf(nil)
+    protoBufferPool.Put(cb)
+    return out, err
+}
+```
+
+至此，grpc 的整个编解码的流程我们就已经剖析完了
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
