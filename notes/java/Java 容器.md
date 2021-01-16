@@ -1,5 +1,6 @@
 <!-- GFM-TOC -->
-* [一、概览](#一概览)
+
+* [一、概览-基础](#一概览-基础)
     * [Collection](#collection)
     * [Map](#map)
 * [二、容器中的设计模式](#二容器中的设计模式)
@@ -18,35 +19,879 @@
 <!-- GFM-TOC -->
 
 
-# 一、概览
+# 一、概览-基础
 
-容器主要包括 Collection 和 Map 两种，Collection 存储着对象的集合，而 Map 存储着键值对（两个对象）的映射表。
+容器主要包括 Collection和 Map 两种，Collection 存储着对象的集合，而 Map 存储着键值对（两个对象）的映射表。
+
+容器和数组的区别：
+
+* 数组的长度是固定的。容器的长度是可变的。
+* 数组中存储的是同一类型的元素，可以存储基本数据类型值。容器存储的都是对象。而且对象的类型可以不一致。在开发中一般当对象多的时候，使用容器进行存储。
 
 ## Collection
 
+**Collection**：单列容器类的根接口，用于存储一系列符合某种规则的元素，它有两个重要的子接口，分别是`java.util.List`和`java.util.Set`。其中，`List`的特点是元素有序、元素可重复。`Set`的特点是元素无序，而且不可重复。`List`接口的主要实现类有`java.util.ArrayList`和`java.util.LinkedList`，`Set`接口的主要实现类有`java.util.HashSet`和`java.util.TreeSet`。
+
 <div align="center"> <img src="https://cs-notes-1256109796.cos.ap-guangzhou.myqcloud.com/image-20191208220948084.png"/> </div><br>
+
+<div align="center"><img src="../../pics/4f78a35b-57e0-409b-96fc-12ab9d2fa47c.png"width="800px"></img></div>
+
+PS.顶层不是接口就是抽象类
+
+<div align="center"><img src="../../pics/5de16f93-2ae8-492a-a401-579d0a9dc448.png"width="800px"></img></div>
 
 ### 1. Set
 
 - TreeSet：基于红黑树实现，支持有序性操作，例如根据一个范围查找元素的操作。但是查找效率不如 HashSet，HashSet 查找的时间复杂度为 O(1)，TreeSet 则为 O(logN)。
-
 - HashSet：基于哈希表实现，支持快速查找，但不支持有序性操作。并且失去了元素的插入顺序信息，也就是说使用 Iterator 遍历 HashSet 得到的结果是不确定的。
-
 - LinkedHashSet：具有 HashSet 的查找效率，并且内部使用双向链表维护元素的插入顺序。
+
+`java.util.Set`接口和`java.util.List`接口一样，同样继承自`Collection`接口，它与`Collection`接口中的方法基本一致，并没有对`Collection`接口进行功能上的扩充，只是比`Collection`接口更加严格了。与`List`接口不同的是，`Set`接口中元素无序（没有索引,没有带索引的方法,也不能使用普通的for循环遍历），并且都会以某种规则保证存入的元素不出现重复。
+
+> tips:Set集合取出元素的方式可以采用：迭代器、增强for。
+
+#### 1.1 HashSet集合介绍
+
+`java.util.HashSet`是`Set`接口的一个实现类，它所存储的元素是不可重复的，并且元素都是无序的(即存取顺序不一致)。`java.util.HashSet`底层的实现其实是一个`java.util.HashMap`支持。
+
+`HashSet`是根据对象的哈希值来确定元素在集合中的存储位置，因此具有良好的存取和查找性能。保证元素唯一性的方式依赖于：`hashCode`与`equals`方法。
+
+~~~java
+public class Demo01Set {
+    public static void main(String[] args) {
+        Set<Integer> set = new HashSet<>();
+        //使用add方法往集合中添加元素
+        set.add(1);
+        set.add(3);
+        set.add(2);
+        set.add(1);
+        //使用迭代器遍历set集合
+        for (Integer n : set) {
+            System.out.println(n);//1,2,3
+        }
+        //使用增强for遍历set集合
+        System.out.println("-----------------");
+        for (Integer i : set) {
+            System.out.println(i);
+        }
+    }
+}
+~~~
+
+输出结果如下，说明集合中不能存储重复元素：
+
+~~~
+1
+2
+3
+-----------------
+1
+2
+3
+~~~
+
+#### 1.2  HashSet集合存储数据的结构（哈希表）
+
+在**JDK1.8**之前，哈希表底层采用数组+链表实现，即使用链表处理冲突，同一hash值的链表都存储在一个链表里。但是当位于一个桶中的元素较多，即hash值相等的元素较多时，通过key值依次查找的效率较低。而JDK1.8中，哈希表存储采用数组+链表+红黑树实现，当链表长度超过阈值（8）时，将链表转换为红黑树，这样大大减少了查找时间。
+
+简单的来说，哈希表是由数组+链表+红黑树（JDK1.8增加了红黑树部分）实现的，如下图所示。
+
+<div align="center"><img src="../../pics/366c9f80-904b-40af-b112-edf2656f35cb.png"width="800px"></img></div>
+
+存储流程图：
+
+<div align="center"><img src="../../pics/6f31b797-19e9-418b-a70d-1108896325a4.png"width="800px"></img></div>
+
+<div align="center"><img src="../../pics/d92e7abf-78b8-47e1-bd12-096be8bfcf7c.png"width="800px"></img></div>
+
+总而言之，**JDK1.8**引入红黑树大程度优化了HashMap的性能，那么对于我们来讲保证HashSet集合元素的唯一，其实就是根据对象的hashCode和equals方法来决定的。如果我们往集合中存放自定义的对象，那么保证其唯一，就必须复写hashCode和equals方法建立属于当前对象的比较方式。
+
+<div align="center"><img src="../../pics/934f1dac-3760-4bb9-a91a-6469565b89cb.png"width="800px"></img></div>
+
+#### 1.3  HashSet存储自定义类型元素
+
+给HashSet中存放自定义类型元素时，需要重写对象中的hashCode和equals方法，建立自己的比较方式，才能保证HashSet集合中的对象唯一
+
+~~~java
+/*
+    HashSet存储自定义类型元素
+
+    set集合报错元素唯一:
+        存储的元素(String,Integer,...Student,Person...),必须重写hashCode方法和equals方法
+
+    要求:
+        同名同年龄的人,视为同一个人,只能存储一次
+ */
+public class Student {
+    private String name;
+    private int age;
+
+    public Student() {
+    }
+
+    public Student(String name, int age) {
+        this.name = name;
+        this.age = age;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public int getAge() {
+        return age;
+    }
+
+    public void setAge(int age) {
+        this.age = age;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
+        Student student = (Student) o;
+        return age == student.age &&
+               Objects.equals(name, student.name);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name, age);
+    }
+}
+~~~
+
+~~~java
+public class HashSetDemo2 {
+    public static void main(String[] args) {
+        //创建集合对象   该集合中存储 Student类型对象
+        HashSet<Student> stuSet = new HashSet<Student>();
+        //存储 
+        Student stu = new Student("于谦", 43);
+        stuSet.add(stu);
+        stuSet.add(new Student("郭德纲", 44));
+        stuSet.add(new Student("于谦", 43));
+        stuSet.add(new Student("郭麒麟", 23));
+        stuSet.add(stu);
+
+        for (Student stu2 : stuSet) {
+            System.out.println(stu2);
+        }
+    }
+}
+执行结果：
+Student [name=郭德纲, age=44]
+Student [name=于谦, age=43]
+Student [name=郭麒麟, age=23]
+~~~
+
+#### 1.4 LinkedHashSet
+
+HashSet保证元素唯一，但元素存放进去是没有顺序的，那如何保证有序？
+
+在HashSet下面有一个子类`java.util.LinkedHashSet`，底层是一个哈希表(数组+链表/红黑树)+链表+多了一条链表(记录元素的存储顺序)，以保证元素有序。
+
+例子如下:
+
+~~~java
+public class LinkedHashSetDemo {
+	public static void main(String[] args) {
+		Set<String> set = new LinkedHashSet<String>();
+		set.add("bbb");
+		set.add("aaa");
+		set.add("abc");
+		set.add("bbc");
+        Iterator<String> it = set.iterator();
+		while (it.hasNext()) {
+			System.out.println(it.next());
+		}
+	}
+}
+结果：
+  bbb
+  aaa
+  abc
+  bbc
+~~~
 
 ### 2. List
 
 - ArrayList：基于动态数组实现，支持随机访问。
-
 - Vector：和 ArrayList 类似，但它是线程安全的。
-
 - LinkedList：基于双向链表实现，只能顺序访问，但是可以快速地在链表中间插入和删除元素。不仅如此，LinkedList 还可以用作栈、队列和双向队列。
+
+#### 2.1 List接口介绍
+
+`java.util.List`接口继承自`Collection`接口，是单列集合的一个重要分支，习惯性地会将实现了`List`接口的对象称为List集合。在List集合中允许出现重复的元素，所有的元素是以一种线性方式进行存储的，在程序中可以通过索引来访问集合中的指定元素。另外，List集合还有一个特点就是元素有序，即元素的存入顺序和取出顺序一致。
+
+List接口特点：
+
+1. 它是一个元素存取有序的集合。例如，存元素的顺序是11、22、33。那么集合中，元素的存储就是按照11、22、33的顺序完成的）。
+2. 它是一个带有索引的集合，通过索引就可以精确的操作集合中的元素（与数组的索引是一个道理）。
+3. 集合中可以有重复的元素，通过元素的equals方法，来比较是否为重复的元素。
+
+> tips:java.util.ArrayList类中的方法都是来自List中定义。
+
+#### 2.2 List接口中常用方法
+
+List作为Collection集合的子接口，不但继承了Collection接口中的全部方法，而且还增加了一些根据元素索引来操作集合的特有方法，如下：
+
+- `public void add(int index, E element)`: 将指定的元素，添加到该集合中的指定位置上。
+- `public E get(int index)`:返回集合中指定位置的元素。
+- `public E remove(int index)`: 移除列表中指定位置的元素, 返回的是被移除的元素。
+- `public E set(int index, E element)`:用指定元素替换集合中指定位置的元素,返回值的更新前的元素。
+
+List集合特有的方法都是跟索引相关：
+
+```java
+public class ListDemo {
+    public static void main(String[] args) {
+		// 创建List集合对象
+    	List<String> list = new ArrayList<String>();
+    	
+    	// 往 尾部添加 指定元素
+    	list.add("图图");
+    	list.add("小美");
+    	list.add("不高兴");
+    	
+    	System.out.println(list);
+    	// add(int index,String s) 往指定位置添加
+    	list.add(1,"没头脑");
+    	
+    	System.out.println(list);
+    	// String remove(int index) 删除指定位置元素  返回被删除元素
+    	// 删除索引位置为2的元素 
+    	System.out.println("删除索引位置为2的元素");
+    	System.out.println(list.remove(2));
+    	
+    	System.out.println(list);
+    	
+    	// String set(int index,String s)
+    	// 在指定位置 进行 元素替代（改） 
+    	// 修改指定位置元素
+    	list.set(0, "三毛");
+    	System.out.println(list);
+    	
+    	// String get(int index)  获取指定位置元素
+    	
+    	// 跟size() 方法一起用  来 遍历的 
+    	for(int i = 0;i<list.size();i++){
+    		System.out.println(list.get(i));
+    	}
+    	//还可以使用增强for
+    	for (String string : list) {
+			System.out.println(string);
+		}  	
+	}
+}
+```
+
+#### 2.3List的子类-ArrayList集合
+
+`java.util.ArrayList`底层的数组结构是数组。元素增删慢，查找快，由于日常开发中使用最多的功能为查询数据、遍历数据，所以ArrayList是最常用的集合。
+
+#### 2.4List的子类-LinkedList集合
+
+`java.util.LinkedList底层的数组结构是双向链表结构。方便元素添加、删除的集合。
+
+<div align="center"><img src="../../pics/522a5f21-261c-4693-b35a-f2994a63ba5a.png"width="800px"></img></div>
+
+LinkedList是List的子类，List中的方法LinkedList都是可以使用。实际开发中对一个集合元素的添加与删除经常涉及到首尾操作，而LinkedList提供了大量首尾操作的方法（LinkedList的特有方法即可）。在开发时，LinkedList集合也可以作为堆栈，队列的结构使用。
+
+* `public void addFirst(E e)`:将指定元素插入此列表的开头。
+* `public void addLast(E e)`:将指定元素添加到此列表的结尾。
+* `public E getFirst()`:返回此列表的第一个元素。
+* `public E getLast()`:返回此列表的最后一个元素。
+* `public E removeFirst()`:移除并返回此列表的第一个元素。
+* `public E removeLast()`:移除并返回此列表的最后一个元素。
+* `public E pop()`:从此列表所表示的堆栈处弹出一个元素。
+* `public void push(E e)`:将元素推入此列表所表示的堆栈。
+* `public boolean isEmpty()`：如果列表不包含元素，则返回true。
+
+方法演示：
+
+~~~java
+public class LinkedListDemo {
+    public static void main(String[] args) {
+        LinkedList<String> link = new LinkedList<String>();
+        //添加元素
+        link.addFirst("abc1");
+        link.addFirst("abc2");
+        link.addFirst("abc3");
+        System.out.println(link);
+        // 获取元素
+        System.out.println(link.getFirst());
+        System.out.println(link.getLast());
+        // 删除元素
+        System.out.println(link.removeFirst());
+        System.out.println(link.removeLast());
+
+        while (!link.isEmpty()) { //判断集合是否为空
+            System.out.println(link.pop()); //弹出集合中的栈顶元素
+        }
+
+        System.out.println(link);
+    }
+}
+~~~
+
+#### 2.4List的子类-LinkedList集合
 
 ### 3. Queue
 
 - LinkedList：可以用它来实现双向队列。
 
 - PriorityQueue：基于堆结构实现，可以用它来实现优先队列。
+
+### 4. 通用方法
+
+Collection是所有单列容器的父接口，因此在Collection中定义了单列集合(List和Set)通用的一些方法，这些方法可用于操作所有的单列集合。方法如下：
+
+* `public boolean add(E e)`：  把给定的对象添加到当前集合中 。
+* `public void clear()` :清空集合中所有的元素。
+* `public boolean remove(E e)`: 把给定的对象在当前集合中删除。
+* `public boolean contains(E e)`: 判断当前集合中是否包含给定的对象。
+* `public boolean isEmpty()`: 判断当前集合是否为空。
+* `public int size()`: 返回集合中元素的个数。
+* `public Object[] toArray()`: 把集合中的元素，存储到数组中。
+
+方法演示：
+
+~~~java
+import java.util.ArrayList;
+import java.util.Collection;
+
+public class Demo1Collection {
+    public static void main(String[] args) {
+		// 创建集合对象 
+    	// 使用多态形式
+    	Collection<String> coll = new ArrayList<String>();
+    	// 使用方法
+    	// 添加功能  boolean  add(String s)
+    	coll.add("小李广");
+    	coll.add("扫地僧");
+    	coll.add("石破天");
+    	System.out.println(coll);
+
+    	// boolean contains(E e) 判断o是否在集合中存在
+    	System.out.println("判断  扫地僧 是否在集合中"+coll.contains("扫地僧"));
+
+    	//boolean remove(E e) 删除在集合中的o元素
+    	System.out.println("删除石破天："+coll.remove("石破天"));
+    	System.out.println("操作之后集合中元素:"+coll);
+    	
+    	// size() 集合中有几个元素
+		System.out.println("集合中有"+coll.size()+"个元素");
+
+		// Object[] toArray()转换成一个Object数组
+    	Object[] objects = coll.toArray();
+    	// 遍历数组
+    	for (int i = 0; i < objects.length; i++) {
+			System.out.println(objects[i]);
+		}
+
+		// void  clear() 清空集合
+		coll.clear();
+		System.out.println("集合中内容为："+coll);
+		// boolean  isEmpty()  判断是否为空
+		System.out.println(coll.isEmpty());  	
+	}
+}
+~~~
+
+### 5. 迭代器
+
+#### 5.1 Iterator接口
+
+在程序开发中，经常需要遍历集合中的所有元素。针对这种需求，JDK专门提供了一个接口`java.util.Iterator`。`Iterator`接口也是Java集合中的一员，但它与`Collection`、`Map`接口有所不同，`Collection`接口与`Map`接口主要用于存储元素，而`Iterator`主要用于迭代访问（即遍历）`Collection`中的元素，因此`Iterator`对象也被称为迭代器。
+
+想要遍历Collection集合，那么就要获取该集合迭代器完成迭代操作，下面介绍一下获取迭代器的方法：
+
+* `public Iterator iterator()`: 获取集合对应的迭代器，用来遍历集合中的元素的。
+
+下面介绍一下迭代的概念：
+
+* **迭代**：即Collection集合元素的通用获取方式。在取元素之前先要判断集合中有没有元素，如果有，就把这个元素取出来，继续在判断，如果还有就再取出出来。一直把集合中的所有元素全部取出。这种取出方式专业术语称为迭代。
+
+Iterator接口的常用方法如下：
+
+* `public E next()`:返回迭代的下一个元素。
+* `public boolean hasNext()`:如果仍有元素可以迭代，则返回 true。
+
+接下来我们通过案例学习如何使用Iterator迭代集合中元素：
+
+~~~java
+public class IteratorDemo {
+  	public static void main(String[] args) {
+        // 使用多态方式 创建对象
+        Collection<String> coll = new ArrayList<String>();
+
+        // 添加元素到集合
+        coll.add("串串星人");
+        coll.add("吐槽星人");
+        coll.add("汪星人");
+        //遍历
+        /*
+       1.使用集合中的方法iterator()获取迭代器的实现类对象,使用Iterator接口接收(多态)
+         注意:
+         Iterator<E>接口也是有泛型的,迭代器的泛型跟着集合走,集合是什么泛型,迭代器就是什么泛型
+         */
+        //多态  接口            实现类对象
+        Iterator<String> it = coll.iterator();
+        //  泛型指的是 迭代出 元素的数据类型
+        while(it.hasNext()){ //判断是否有迭代元素
+            String s = it.next();//获取迭代出的元素
+            System.out.println(s);
+        }
+  	}
+}
+~~~
+
+> tips:：在进行集合元素取出时，如果集合中已经没有元素了，还继续使用迭代器的next方法，将会发生java.util.NoSuchElementException没有集合元素的错误。
+
+#### 5.2 迭代器的实现原理
+
+在之前案例已经完成了Iterator遍历集合的整个过程。当遍历集合时，首先通过调用t集合的iterator()方法获得迭代器对象，然后使用hashNext()方法判断集合中是否存在下一个元素，如果存在，则调用next()方法将元素取出，否则说明已到达了集合末尾，停止遍历元素。
+
+Iterator迭代器对象在遍历集合时，内部采用指针的方式来跟踪集合中的元素，为了让初学者能更好地理解迭代器的工作原理，接下来通过一个图例来演示Iterator对象迭代元素的过程：
+
+<div align="center"><img src="../../pics/fa4c330f-4c77-450e-a2cd-49db5f127b5d.png"width="800px"></img></div>
+
+在调用Iterator的next方法之前，迭代器的索引位于第一个元素之前，不指向任何元素，当第一次调用迭代器的next方法后，迭代器的索引会向后移动一位，指向第一个元素并将该元素返回，当再次调用next方法时，迭代器的索引会指向第二个元素并将该元素返回，依此类推，直到hasNext方法返回false，表示到达了集合的末尾，终止对元素的遍历。
+
+#### 5.3 增强for
+
+增强for循环(也称for each循环)是**JDK1.5**以后出来的一个高级for循环，专门用来遍历数组和集合的。它的内部原理其实是个Iterator迭代器，所以在遍历的过程中，不能对集合中的元素进行增删操作。
+
+格式：
+
+~~~java
+for(元素的数据类型  变量 : Collection集合or数组){ 
+  	//写操作代码
+}
+~~~
+
+它用于遍历Collection和数组。通常只进行遍历元素，不要在遍历的过程中对集合元素进行增删操作。
+
+**练习1：遍历数组**
+
+~~~java
+public class NBForDemo1 {
+    public static void main(String[] args) {
+		int[] arr = {3,5,6,87};
+       	//使用增强for遍历数组
+		for(int a : arr){//a代表数组中的每个元素
+			System.out.println(a);
+		}
+	}
+}
+~~~
+
+**练习2:遍历集合**
+
+~~~java
+public class NBFor {
+    public static void main(String[] args) {        
+    	Collection<String> coll = new ArrayList<String>();
+    	coll.add("小河神");
+    	coll.add("老河神");
+    	coll.add("神婆");
+    	//使用增强for遍历
+    	for(String s :coll){//接收变量s代表 代表被遍历到的集合元素
+    		System.out.println(s);
+    	}
+	}
+}
+~~~
+
+> tips: 新for循环必须有被遍历的目标。目标只能是Collection或者是数组。新式for仅仅作为遍历操作出现。
+
+### 6.  可变参数
+
+在**JDK1.5**之后，如果定义一个方法需要接受多个参数，并且多个参数类型一致，可以对其简化成如下格式：
+
+```
+修饰符 返回值类型 方法名(参数类型... 形参名){  }
+```
+
+其实这个书写完全等价与
+
+```
+修饰符 返回值类型 方法名(参数类型[] 形参名){  }
+```
+
+只是后面这种定义，在调用时必须传递数组，而前者可以直接传递数据即可。
+
+**JDK1.5**以后。出现了简化操作。**...** 用在参数上，称之为可变参数。
+
+同样是代表数组，但是在调用这个带有可变参数的方法时，不用创建数组(这就是简单之处)，直接将数组中的元素作为实际参数进行传递，其实编译成的class文件，将这些元素先封装到一个数组中，在进行传递。这些动作都在编译.class文件时，自动完成了。
+
+代码演示：    
+
+```java
+/*
+    可变参数:是JDK1.5之后出现的新特性
+    使用前提:
+        当方法的参数列表数据类型已经确定,但是参数的个数不确定,就可以使用可变参数.
+    使用格式:定义方法时使用
+        修饰符 返回值类型 方法名(数据类型...变量名){}
+    可变参数的原理:
+        可变参数底层就是一个数组,根据传递参数个数不同,会创建不同长度的数组,来存储这些参数
+        传递的参数个数,可以是0个(不传递),1,2...多个
+
+ */
+public class Demo01VarArgs {
+    public static void main(String[] args) {
+        //int i = add();
+        //int i = add(10);
+        int i = add(10,20);
+        //int i = add(10,20,30,40,50,60,70,80,90,100);
+        System.out.println(i);
+
+        method("abc",5.5,10,1,2,3,4);
+    }
+
+    /*
+        可变参数的注意事项
+            1.一个方法的参数列表,只能有一个可变参数
+            2.如果方法的参数有多个,那么可变参数必须写在参数列表的末尾
+     */
+    /*public static void method(int...a,String...b){
+
+    }*/
+
+    /*public static void method(String b,double c,int d,int...a){
+    }*/
+
+    //可变参数的特殊(终极)写法
+    public static void method(Object...obj){
+
+    }
+
+    /*
+        定义计算(0-n)整数和的方法
+        已知:计算整数的和,数据类型已经确定int
+        但是参数的个数不确定,不知道要计算几个整数的和,就可以使用可变参数
+        add(); 就会创建一个长度为0的数组, new int[0]
+        add(10); 就会创建一个长度为1的数组,存储传递来过的参数 new int[]{10};
+        add(10,20); 就会创建一个长度为2的数组,存储传递来过的参数 new int[]{10,20};
+        add(10,20,30,40,50,60,70,80,90,100); 就会创建一个长度为2的数组,存储传递来过的参数 new int[]{10,20,30,40,50,60,70,80,90,100};
+     */
+    public static int add(int...arr){
+        //System.out.println(arr);//[I@2ac1fdc4 底层是一个数组
+        //System.out.println(arr.length);//0,1,2,10
+        //定义一个初始化的变量,记录累加求和
+        int sum = 0;
+        //遍历数组,获取数组中的每一个元素
+        for (int i : arr) {
+            //累加求和
+            sum += i;
+        }
+        //把求和结果返回
+        return sum;
+    }
+
+    //定义一个方法,计算三个int类型整数的和
+    /*public static int add(int a,int b,int c){
+        return a+b+c;
+    }*/
+
+    //定义一个方法,计算两个int类型整数的和
+    /*public static int add(int a,int b){
+        return a+b;
+    }*/
+}
+```
+
+> tips: 上述add方法在同一个类中，只能存在一个。因为会发生调用的不确定性
+>
+> 注意：如果在方法书写时，这个方法拥有多参数，参数中包含可变参数，可变参数一定要写在参数列表的末尾位置。
+
+### 7. Collections集合工具类
+
+#### 7.1 常用功能
+
+* `java.utils.Collections`是集合工具类，用来对集合进行操作。部分方法如下：
+
+- `public static <T> boolean addAll(Collection<T> c, T... elements)  `:往集合中添加一些元素。
+- `public static void shuffle(List<?> list) 打乱顺序`:打乱集合顺序。
+- `public static <T> void sort(List<T> list)`:将集合中元素按照默认规则排序。
+- `public static <T> void sort(List<T> list，Comparator<? super T> )`:将集合中元素按照指定规则排序。
+
+代码演示：
+
+```java
+public class CollectionsDemo {
+    public static void main(String[] args) {
+        ArrayList<Integer> list = new ArrayList<Integer>();
+        //原来写法
+        //list.add(12);
+        //list.add(14);
+        //list.add(15);
+        //list.add(1000);
+        //采用工具类 完成 往集合中添加元素  
+        Collections.addAll(list, 5, 222, 1，2);
+        System.out.println(list);
+        //排序方法 
+        Collections.sort(list);
+        System.out.println(list);
+    }
+}
+结果：
+[5, 222, 1, 2]
+[1, 2, 5, 222]
+```
+
+#### 7.2 Comparator比较器
+
+`public static <T> void sort(List<T> list)`:将集合中元素按照默认规则排序。举个字符串类型的例子：
+
+```java
+public class CollectionsDemo2 {
+    public static void main(String[] args) {
+        ArrayList<String>  list = new ArrayList<String>();
+        list.add("cba");
+        list.add("aba");
+        list.add("sba");
+        list.add("nba");
+        //排序方法
+        Collections.sort(list);
+        System.out.println(list);
+    }
+}
+```
+
+结果：
+
+```
+[aba, cba, nba, sba]
+```
+
+我们使用的是默认的规则完成字符串的排序，那么默认规则是怎么定义出来的呢？
+
+说到排序了，简单的说就是两个对象之间比较大小，那么在JAVA中提供了两种比较实现的方式，一种是比较死板的采用`java.lang.Comparable`接口去实现，一种是灵活的当我需要做排序的时候在去选择的`java.util.Comparator`接口完成。
+
+那么我们采用的`public static <T> void sort(List<T> list)`这个方法完成的排序，实际上要求了被排序的类型需要实现Comparable接口完成比较的功能，在String类型上如下：
+
+```java
+public final class String implements java.io.Serializable, Comparable<String>, CharSequence {
+```
+
+String类实现了这个接口，并完成了比较规则的定义，但是这样就把这种规则写死了。
+
+举个自定义对象的例子：
+
+```java
+public class Person implements Comparable<Person>{
+    private String name;
+    private int age;
+
+    public Person() {
+    }
+
+    public Person(String name, int age) {
+        this.name = name;
+        this.age = age;
+    }
+
+    @Override
+    public String toString() {
+        return "Person{" +
+                "name='" + name + '\'' +
+                ", age=" + age +
+                '}';
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public int getAge() {
+        return age;
+    }
+
+    public void setAge(int age) {
+        this.age = age;
+    }
+
+    //重写排序的规则
+    @Override
+    public int compareTo(Person o) {
+        //return 0;//认为元素都是相同的
+        //自定义比较的规则,比较两个人的年龄(this,参数Person)
+        //return this.getAge() - o.getAge();//年龄升序排序
+        return o.getAge() - this.getAge();//年龄升序排序
+    }
+}
+
+/*
+    - java.utils.Collections是集合工具类，用来对集合进行操作。部分方法如下：
+        public static <T> void sort(List<T> list):将集合中元素按照默认规则排序。
+
+    注意:
+         sort(List<T> list)使用前提
+         被排序的集合里边存储的元素,必须实现Comparable,重写接口中的方法compareTo定义排序的规则
+
+    Comparable接口的排序规则:
+        自己(this)-参数:升序
+ */
+class Demo02Sort {
+    public static void main(String[] args) {
+        ArrayList<Integer> list01 = new ArrayList<>();
+        list01.add(1);
+        list01.add(3);
+        list01.add(2);
+        System.out.println(list01);//[1, 3, 2]
+
+        //public static <T> void sort(List<T> list):将集合中元素按照默认规则排序。
+        Collections.sort(list01);//默认是升序
+
+        System.out.println(list01);//[1, 2, 3]
+
+        ArrayList<String> list02 = new ArrayList<>();
+        list02.add("a");
+        list02.add("c");
+        list02.add("b");
+        System.out.println(list02);//[a, c, b]
+
+        Collections.sort(list02);
+        System.out.println(list02);//[a, b, c]
+
+        ArrayList<Person> list03 = new ArrayList<>();
+        list03.add(new Person("张三",18));
+        list03.add(new Person("李四",20));
+        list03.add(new Person("王五",15));
+        System.out.println(list03);//[Person{name='张三', age=18}, Person{name='李四', age=20}, Person{name='王五', age=15}]
+
+        Collections.sort(list03);
+        System.out.println(list03);
+    }
+}
+```
+
+那比如我想要字符串按照第一个字符降序排列，那么这样就要修改String的源代码，这是不可能的了，那么这个时候我们可以使用
+
+`public static <T> void sort(List<T> list，Comparator<? super T> )`方法灵活的完成，这个里面就涉及到了Comparator这个接口，位于位于java.util包下，排序是comparator能实现的功能之一,该接口代表一个比较器，比较器具有可比性！顾名思义就是做排序的，通俗地讲需要比较两个对象谁排在前谁排在后，那么比较的方法就是：
+
+* ` public int compare(String o1, String o2)`：比较其两个参数的顺序。
+
+  > 两个对象比较的结果有三种：大于，等于，小于。
+  >
+  > 如果要按照升序排序，
+  > 则o1 小于o2，返回（负数），相等返回0，01大于02返回（正数）
+  > 如果要按照降序排序
+  > 则o1 小于o2，返回（正数），相等返回0，01大于02返回（负数）
+
+操作如下:
+
+```java
+public class CollectionsDemo3 {
+    public static void main(String[] args) {
+        ArrayList<String> list = new ArrayList<String>();
+        list.add("cba");
+        list.add("aba");
+        list.add("sba");
+        list.add("nba");
+        //排序方法  按照第一个单词的降序
+        Collections.sort(list, new Comparator<String>() {
+            @Override
+            public int compare(String o1, String o2) {
+                return o2.charAt(0) - o1.charAt(0);
+            }
+        });
+        System.out.println(list);
+    }
+}
+```
+
+结果如下：
+
+```
+[sba, nba, cba, aba]
+```
+
+#### 7.3 简述Comparable和Comparator两个接口的区别。
+
+**Comparable**：强行对实现它的每个类的对象进行整体排序。这种排序被称为类的自然排序，类的compareTo方法被称为它的自然比较方法。只能在类中实现compareTo()一次，不能经常修改类的代码实现自己想要的排序。实现此接口的对象列表（和数组）可以通过Collections.sort（和Arrays.sort）进行自动排序，对象可以用作有序映射中的键或有序集合中的元素，无需指定比较器。
+
+**Comparator**：强行对某个对象进行整体排序。可以将Comparator 传递给sort方法（如Collections.sort或 Arrays.sort），从而允许在排序顺序上实现精确控制。还可以使用Comparator来控制某些数据结构（如有序set或有序映射）的顺序，或者为那些没有自然顺序的对象collection提供排序。
+
+```Java
+/*
+    - java.utils.Collections是集合工具类，用来对集合进行操作。部分方法如下：
+        public static <T> void sort(List<T> list，Comparator<? super T> ):将集合中元素按照指定规则排序。
+
+     Comparator和Comparable的区别
+        Comparable:自己(this)和别人(参数)比较,自己需要实现Comparable接口,重写比较的规则compareTo方法
+        Comparator:相当于找一个第三方的裁判,比较两个
+
+    Comparator的排序规则:
+        o1-o2:升序
+ */
+public class Demo03Sort {
+    public static void main(String[] args) {
+        ArrayList<Integer> list01 = new ArrayList<>();
+        list01.add(1);
+        list01.add(3);
+        list01.add(2);
+        System.out.println(list01);//[1, 3, 2]
+
+        Collections.sort(list01, new Comparator<Integer>() {
+            //重写比较的规则
+            @Override
+            public int compare(Integer o1, Integer o2) {
+                //return o1-o2;//升序
+                return o2-o1;//降序
+            }
+        });
+
+        System.out.println(list01);
+
+        ArrayList<Student> list02 = new ArrayList<>();
+        list02.add(new Student("a迪丽热巴",18));
+        list02.add(new Student("古力娜扎",20));
+        list02.add(new Student("杨幂",17));
+        list02.add(new Student("b杨幂",18));
+        System.out.println(list02);
+
+        /*Collections.sort(list02, new Comparator<Student>() {
+            @Override
+            public int compare(Student o1, Student o2) {
+                //按照年龄升序排序
+                return o1.getAge()-o2.getAge();
+            }
+        });*/
+
+        //扩展:了解
+        Collections.sort(list02, new Comparator<Student>() {
+            @Override
+            public int compare(Student o1, Student o2) {
+                //按照年龄升序排序
+                int result =  o1.getAge()-o2.getAge();
+                //如果两个人年龄相同,再使用姓名的第一个字比较
+                if(result==0){
+                    result =  o1.getName().charAt(0)-o2.getName().charAt(0);
+                }
+                return  result;
+            }
+
+        });
+
+        System.out.println(list02);
+    }
+}
+```
 
 ## Map
 
@@ -59,6 +904,7 @@
 - HashTable：和 HashMap 类似，但它是线程安全的，这意味着同一时刻多个线程同时写入 HashTable 不会导致数据不一致。它是遗留类，不应该去使用它，而是使用 ConcurrentHashMap 来支持线程安全，ConcurrentHashMap 的效率会更高，因为 ConcurrentHashMap 引入了分段锁。
 
 - LinkedHashMap：使用双向链表来维护元素的顺序，顺序为插入顺序或者最近最少使用（LRU）顺序。
+
 
 
 # 二、容器中的设计模式
@@ -110,17 +956,8 @@ List list = Arrays.asList(1, 2, 3);
 
 ## ArrayList
 
+
 ### 1. 概览
-
-Array数组的长度不可以发生改变，但是ArrayList集合的长度是可以随意变化的。
-
-对于ArrayList来说，有一个尖括号<E>代表泛型。
-
-泛型：也就是装在集合当中的所有元素，全都是统一的什么类型。
-
-注意：泛型只能是引用类型，不能是基本类型。
-
-注意事项：对于ArrayList集合来说，直接打印得到的不是地址值，而是内容（重写了toString方法）。如果内容是空，得到的是空的中括号：[]。
 
 因为 ArrayList 是基于数组实现的，所以支持快速随机访问。RandomAccess 接口标识着该类支持快速随机访问。
 
@@ -1139,3 +1976,9 @@ public final class ConcurrentCache<K, V> {
 - [Java Collection Framework – The LinkedList Class](http://javaconceptoftheday.com/java-collection-framework-linkedlist-class/)
 
 
+
+
+
+
+
+<div align="center"><img width="320px" src="https://cs-notes-1256109796.cos.ap-guangzhou.myqcloud.com/githubio/公众号二维码-2.png"></img></div>

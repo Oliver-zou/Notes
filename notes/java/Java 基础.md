@@ -71,6 +71,8 @@
 
 * [十五、内部类](#十五内部类)
 
+* [十六、时间](#十六时间ß)
+
 * [参考资料](#参考资料)
   <!-- GFM-TOC -->
 
@@ -95,14 +97,121 @@ boolean 只有两个值：true、false，可以使用 1 bit 来存储，但是�
 
 ## 包装类型
 
-基本类型都有对应的包装类型，基本类型与其对应的包装类型之间的赋值使用自动装箱与拆箱完成。
+**概述**
+
+Java提供了两个类型系统，基本类型与引用类型，使用基本类型在于效率，然而很多情况，会创建对象使用，因为对象可以做更多的功能，如果想要我们的基本类型像对象一样操作（泛型中使用），就可以使用基本类型对应的包装类，如下：
+
+| 基本类型 | 对应的包装类（位于java.lang包中） |
+| -------- | --------------------------------- |
+| byte     | Byte                              |
+| short    | Short                             |
+| int      | **Integer**                       |
+| long     | Long                              |
+| float    | Float                             |
+| double   | Double                            |
+| char     | **Character**                     |
+| boolean  | Boolean                           |
+
+**装箱与拆箱**
+
+ 构造方法:
+
+​        Integer(int value) 构造一个新分配的 Integer 对象，它表示指定的 int 值。
+
+​        Integer(String s) 构造一个新分配的 Integer 对象，它表示 String 参数所指示的 int 值。
+
+​            传递的字符串,必须是基本类型的字符串,否则会抛出异常 "100" 正确  "a" 抛异常
+
+​    静态方法:
+
+​        static Integer valueOf(int i) 返回一个表示指定的 int 值的 Integer 实例。
+
+​        static Integer valueOf(String s) 返回保存指定的 String 的值的 Integer 对象。
+
+拆箱:在包装类中取出基本类型的数据(包装类->基本类型的数据)
+
+​    成员方法:
+
+​        int intValue() 以 int 类型返回该 Integer 的值。
+
+基本类型与对应的包装类对象之间，来回转换的过程称为”装箱“与”拆箱“：
+
+* **装箱**：从基本类型转换为对应的包装类对象。
+
+* **拆箱**：从包装类对象转换为对应的基本类型。
+
+用Integer与 int为例：（看懂代码即可）
+
+基本数值---->包装对象
+
+~~~java
+Integer i = new Integer(4);//使用构造函数函数
+Integer iii = Integer.valueOf(4);//使用包装类中的valueOf方法
+~~~
+
+包装对象---->基本数值
+
+~~~java
+int num = i.intValue();
+~~~
+
+**自动装箱与自动拆箱**
+
+由于我们经常要做基本类型与包装类之间的转换，从Java 5（JDK 1.5）开始，基本类型与包装类的装箱、拆箱动作可以自动完成。例如：
 
 ```java
-Integer x = 2;     // 装箱 调用了 Integer.valueOf(2)
-int y = x;         // 拆箱 调用了 X.intValue()
+Integer i = 4;//自动装箱。相当于Integer i = Integer.valueOf(4);
+i = i + 5;//等号右边：将i对象转成基本数值(自动拆箱) i.intValue() + 5;
+//加法运算完成后，再次装箱，把基本数值转成对象。
 ```
 
-- [Autoboxing and Unboxing](https://docs.oracle.com/javase/tutorial/java/data/autoboxing.html)
+**基本类型转换为String**
+
+基本类型->字符串(String)
+
+​    1.基本类型的值+""  最简单的方法(工作中常用)，如：34+""
+
+​    2.包装类的静态方法toString(参数),不是Object类的toString() 重载
+
+​        static String toString(int i) 返回一个表示指定整数的 String 对象。
+
+​    3.String类的静态方法valueOf(参数)
+
+​        static String valueOf(int i) 返回 int 参数的字符串表示形式。
+
+**String转换成对应的基本类型** 
+
+字符串(String)->基本类型
+
+​    使用包装类的静态方法parseXXX("字符串");
+
+​        Integer类: static int parseInt(String s)
+
+​        Double类: static double parseDouble(String s)
+
+除了Character类之外，其他所有包装类都具有parseXxx静态方法可以将字符串参数转换为对应的基本类型：
+
+- `public static byte parseByte(String s)`：将字符串参数转换为对应的byte基本类型。
+- `public static short parseShort(String s)`：将字符串参数转换为对应的short基本类型。
+- `public static int parseInt(String s)`：将字符串参数转换为对应的int基本类型。
+- `public static long parseLong(String s)`：将字符串参数转换为对应的long基本类型。
+- `public static float parseFloat(String s)`：将字符串参数转换为对应的float基本类型。
+- `public static double parseDouble(String s)`：将字符串参数转换为对应的double基本类型。
+- `public static boolean parseBoolean(String s)`：将字符串参数转换为对应的boolean基本类型。
+
+代码使用（仅以Integer类的静态方法parseXxx为例）如：
+
+```java
+public class Demo18WrapperParse {
+    public static void main(String[] args) {
+        int num = Integer.parseInt("100");
+    }
+}
+```
+
+> 注意:如果字符串参数的内容无法正确转换为对应的基本类型，则会抛出`java.lang.NumberFormatException`异常。
+
+[Autoboxing and Unboxing](https://docs.oracle.com/javase/tutorial/java/data/autoboxing.html)
 
 ## 缓存池
 
@@ -320,12 +429,111 @@ String 不可变性天生具备线程安全，可以在多个线程中安全地�
 
 ## String, StringBuffer and StringBuilder	
 
-**1. 可变性**  
+**1.字符串拼接问题**
+
+由于String类的对象内容不可改变，所以每当进行字符串拼接时，总是会在内存中创建一个新的对象。例如：
+
+~~~java
+public class StringDemo {
+    public static void main(String[] args) {
+        String s = "Hello";
+        s += "World";
+        System.out.println(s);
+    }
+}
+~~~
+
+在API中对String类有这样的描述：字符串是常量，它们的值在创建后不能被更改。
+
+根据这句话分析我们的代码，其实总共产生了三个字符串，即`"Hello"`、`"World"`和`"HelloWorld"`。引用变量s首先指向`Hello`对象，最终指向拼接出来的新字符串对象，即`HelloWord` 。
+
+<div align="center"><img src="../../pics/91cbabd0-97ec-409d-a4a7-b94cf4948ae7.png"width="800px"></img></div>
+
+由此可知，如果对字符串进行拼接操作，每次拼接，都会构建一个新的String对象，既耗时，又浪费空间。为了解决这一问题，可以使用`java.lang.StringBuilder`类。
+
+查阅`java.lang.StringBuilder`的API，StringBuilder又称为可变字符序列，它是一个类似于 String 的字符串缓冲区，通过某些方法调用可以改变该序列的长度和内容。
+
+原来StringBuilder是个字符串的缓冲区，即它是一个容器，容器中可以装很多字符串。并且能够对其中的字符串进行各种操作。
+
+它的内部拥有一个数组用来存放字符串内容，进行字符串拼接时，直接在数组中加入新内容。StringBuilder会自动维护数组的扩容。
+
+**2. stringbuilder的构造方法及常用方法**
+
+常用构造方法有2个：
+
+- `public StringBuilder()`：构造一个空的StringBuilder容器。
+- `public StringBuilder(String str)`：构造一个StringBuilder容器，并将字符串添加进去。
+
+```java
+public class StringBuilderDemo {
+    public static void main(String[] args) {
+        StringBuilder sb1 = new StringBuilder();
+        System.out.println(sb1); // (空白)
+        // 使用带参构造
+        StringBuilder sb2 = new StringBuilder("itcast");
+        System.out.println(sb2); // itcast
+    }
+}
+```
+
+StringBuilder常用的方法有2个：
+
+- `public StringBuilder append(...)`：添加任意类型数据的字符串形式，并返回当前对象自身。
+- `public String toString()`：将当前StringBuilder对象转换为String对象。
+
+**append方法**
+
+append方法具有多种重载形式，可以接收任意类型的参数。任何数据作为参数都会将对应的字符串内容添加到StringBuilder中。例如：
+
+```java
+public class Demo02StringBuilder {
+	public static void main(String[] args) {
+		//创建对象
+		StringBuilder builder = new StringBuilder();
+		//public StringBuilder append(任意类型)
+		StringBuilder builder2 = builder.append("hello");
+		//对比一下
+		System.out.println("builder:"+builder);
+		System.out.println("builder2:"+builder2);
+		System.out.println(builder == builder2); //true
+	    // 可以添加 任何类型
+		builder.append("hello");
+		builder.append("world");
+		builder.append(true);
+		builder.append(100);
+		// 在我们开发中，会遇到调用一个方法后，返回一个对象的情况。然后使用返回的对象继续调用方法。
+        // 这种时候，我们就可以把代码现在一起，如append方法一样，代码如下
+		//链式编程
+		builder.append("hello").append("world").append(true).append(100);
+		System.out.println("builder:"+builder);
+	}
+}
+```
+
+> 备注：StringBuilder已经覆盖重写了Object当中的toString方法。
+
+**toString方法**
+
+通过toString方法，StringBuilder对象将会转换为不可变的String对象。如：
+
+```java
+public class Demo16StringBuilder {
+    public static void main(String[] args) {
+        // 链式创建
+        StringBuilder sb = new StringBuilder("Hello").append("World").append("Java");
+        // 调用方法
+        String str = sb.toString();
+        System.out.println(str); // HelloWorldJava
+    }
+}
+```
+
+**3. 可变性**  
 
 - String 不可变
 - StringBuffer 和 StringBuilder 可变
 
-**2. 线程安全**  
+**4. 线程安全**  
 
 - String 不可变，因此是线程安全的
 - StringBuilder 不是线程安全的
@@ -915,10 +1123,10 @@ public InitialOrderTest() {
 
 ## 匿名对象
 
-创建对象的标准格式：
-类名称 对象名 = new 类名称();
+创建对象的标准格式：类名称 对象名 = new 类名称();
 
 匿名对象就是只有右边的对象，没有左边的名字和赋值运算符。
+
 new 类名称();
 
 注意事项：匿名对象只能使用唯一的一次，下次再用不得不再创建一个新对象。
@@ -926,6 +1134,70 @@ new 类名称();
 使用建议：如果确定有一个对象只需要使用唯一的一次，就可以用匿名对象。
 
 虽然是创建对象的简化写法，但是应用场景非常有限。
+
+```java
+public class Person {
+
+    String name;
+
+    public void showName() {
+        System.out.println("我叫：" + name);
+    }
+
+}
+
+public class Demo01Anonymous {
+
+    public static void main(String[] args) {
+        // 左边的one就是对象的名字
+        Person one = new Person();
+        one.name = "高圆圆";
+        one.showName(); // 我叫高圆圆
+        System.out.println("===============");
+
+        // 匿名对象
+        new Person().name = "赵又廷";
+        new Person().showName(); // 我叫：null
+    }
+
+}
+
+public class Demo02Anonymous {
+
+    public static void main(String[] args) {
+        // 普通使用方式
+//        Scanner sc = new Scanner(System.in);
+//        int num = sc.nextInt();
+
+        // 匿名对象的方式
+//        int num = new Scanner(System.in).nextInt();
+//        System.out.println("输入的是：" + num);
+
+        // 使用一般写法传入参数
+//        Scanner sc = new Scanner(System.in);
+//        methodParam(sc);
+
+        // 使用匿名对象来进行传参
+//        methodParam(new Scanner(System.in));
+
+        Scanner sc = methodReturn();
+        int num = sc.nextInt();
+        System.out.println("输入的是：" + num);
+    }
+
+    public static void methodParam(Scanner sc) {
+        int num = sc.nextInt();
+        System.out.println("输入的是：" + num);
+    }
+
+    public static Scanner methodReturn() {
+//        Scanner sc = new Scanner(System.in);
+//        return sc;
+        return new Scanner(System.in);
+    }
+
+}
+```
 
 ## 概览
 
@@ -967,6 +1239,14 @@ public final void wait() throws InterruptedException
 
 ## equals()
 
+ **== 的作用：**
+　　基本类型：比较的就是值是否相同
+　　引用类型：比较的就是地址值是否相同
+**equals 的作用:**
+　　引用类型：默认情况下，比较的是地址值。
+
+String 中 **==** 比较引用地址是否相同，**equals()** 比较字符串的内容是否相同：
+
 **方法摘要**
 
 * `public boolean equals(Object obj)`：指示其他某个对象是否与此对象“相等”。
@@ -1006,8 +1286,6 @@ public class Person {
 
 这段代码充分考虑了对象为空、类型一致等问题，但方法内容并不唯一。大多数IDE都可以自动生成equals方法的代码内容。
 
-
-
 Person类默认继承了Object类,所以可以使用Object类的equals方法
 
 boolean equals(Object obj) 指示其他某个对象是否与此对象“相等”。
@@ -1028,7 +1306,7 @@ equals方法源码:
 
 ​        基本数据类型:比较的是值
 
-​        引用数据类型:比价的是两个对象的地址值
+​        引用数据类型:比较的是两个对象的地址值
 
    this是谁?那个对象调用的方法,方法中的this就是那个对象;p1调用的equals方法所以this就是p1
 
@@ -1138,6 +1416,58 @@ public class EqualExample {
 ```
 
 ## hashCode()
+
+```java
+public class Person extends  Object{
+    //重写hashCode方法
+
+    @Override
+    public int hashCode() {
+        return  1;
+    }
+}
+
+/*
+    哈希值:是一个十进制的整数,由系统随机给出(就是对象的地址值,是一个逻辑地址,是模拟出来得到地址,不是数据实际存储的物理地址)
+    在Object类有一个方法,可以获取对象的哈希值
+    int hashCode() 返回该对象的哈希码值。
+    hashCode方法的源码:
+        public native int hashCode();
+        native:代表该方法调用的是本地操作系统的方法
+ */
+public class Demo01HashCode {
+    public static void main(String[] args) {
+        //Person类继承了Object类,所以可以使用Object类的hashCode方法
+        Person p1 = new Person();
+        int h1 = p1.hashCode();
+        System.out.println(h1);//1967205423  | 1
+
+        Person p2 = new Person();
+        int h2 = p2.hashCode();
+        System.out.println(h2);//42121758   |  1
+
+        /*
+            toString方法的源码:
+                return getClass().getName() + "@" + Integer.toHexString(hashCode());
+         */
+        System.out.println(p1);//com.itheima.demo03.hashCode.Person@75412c2f
+        System.out.println(p2);//com.itheima.demo03.hashCode.Person@282ba1e
+        System.out.println(p1==p2);//false
+
+        /*
+            String类的哈希值
+                String类重写Obejct类的hashCode方法
+         */
+        String s1 = new String("abc");
+        String s2 = new String("abc");
+        System.out.println(s1.hashCode());//96354
+        System.out.println(s2.hashCode());//96354
+
+        System.out.println("重地".hashCode());//1179395
+        System.out.println("通话".hashCode());//1179395
+    }
+}
+```
 
 hashCode() 返回哈希值，而 equals() 是用来判断两个对象是否等价。等价的两个对象散列值一定相同，但是散列值相同的两个对象不一定等价，这是因为计算哈希值具有随机性，两个值不同的对象可能计算出相同的哈希值。
 
@@ -2748,6 +3078,340 @@ boolean     Boolean
 自动拆箱：包装类型 --> 基本类型
 ```
 
+## 泛型概述
+
+<div align="center"><img src="../../pics/8046283a-8d4f-46d4-a716-4c04403568ac.png"width="800px"></img></div>
+
+
+
+在前面学习集合时，我们都知道集合中是可以存放任意对象的，只要把对象存储集合后，那么这时他们都会被提升成Object类型。当我们在取出每一个对象，并且进行相应的操作，这时必须采用类型转换。观察下面代码：
+
+~~~java
+public class GenericDemo {
+	public static void main(String[] args) {
+		Collection coll = new ArrayList();
+		coll.add("abc");
+		coll.add("itcast");
+		coll.add(5);//由于集合没有做任何限定，任何类型都可以给其中存放
+		Iterator it = coll.iterator();
+		while(it.hasNext()){
+			//需要打印每个字符串的长度,就要把迭代出来的对象转成String类型
+			String str = (String) it.next();
+			System.out.println(str.length());
+		}
+	}
+}
+~~~
+
+程序在运行时发生了问题**java.lang.ClassCastException**。为什么会发生类型转换异常呢？                                                                                                                                       
+
+由于集合中什么类型的元素都可以存储。导致取出时强转引发运行时 ClassCastException。                                                                                                                                                       
+
+怎么来解决这个问题呢？                                                                                                                                                           
+
+Collection虽然可以存储各种对象，但实际上通常Collection只存储同一类型对象。例如都是存储字符串对象。因此在JDK5之后，新增了**泛型**(**Generic**)语法，让你在设计API时可以指定类或方法支持泛型，这样我们使用API的时候也变得更为简洁，并得到了编译时期的语法检查。
+
+* **泛型**：可以在类或方法中预支地使用未知的类型。
+
+> tips:一般在创建对象时，将未知的类型确定具体的类型。当没有指定泛型时，默认类型为Object类型。
+
+## 使用泛型的好处
+
+* 将运行时期的ClassCastException，转移到了编译时期变成了编译失败。
+* 避免了类型强转的麻烦。
+
+通过如下代码体验一下：
+
+~~~java
+public class GenericDemo2 {
+	public static void main(String[] args) {
+        Collection<String> list = new ArrayList<String>();
+        list.add("abc");
+        list.add("itcast");
+        // list.add(5);//当集合明确类型后，存放类型不一致就会编译报错
+        // 集合已经明确具体存放的元素类型，那么在使用迭代器的时候，迭代器也同样会知道具体遍历元素类型
+        Iterator<String> it = list.iterator();
+        while(it.hasNext()){
+            String str = it.next();
+            //当使用Iterator<String>控制元素类型后，就不需要强转了。获取到的元素直接就是String类型
+            System.out.println(str.length());
+        }
+	}
+}
+~~~
+
+> tips:泛型是数据类型的一部分，我们将类名与泛型合并一起看做数据类型。
+
+## 定义与使用
+
+泛型，用来灵活地将数据类型应用到不同的类、方法、接口当中。将数据类型作为参数进行传递。
+
+### 定义和使用含有泛型的类
+
+定义格式：
+
+~~~
+修饰符 class 类名<代表泛型的变量> {  }
+~~~
+
+例如，API中的ArrayList集合：
+
+~~~java
+class ArrayList<E>{ 
+    public boolean add(E e){ }
+
+    public E get(int index){ }
+   	....
+}
+~~~
+
+使用泛型： 即什么时候确定泛型。
+
+**在创建对象的时候确定泛型**
+
+ 例如，`ArrayList<String> list = new ArrayList<String>();`
+
+此时，变量E的值就是String类型,那么我们的类型就可以理解为：
+
+~~~java 
+class ArrayList<String>{ 
+     public boolean add(String e){ }
+
+     public String get(int index){  }
+     ...
+}
+~~~
+
+再例如，`ArrayList<Integer> list = new ArrayList<Integer>();`
+
+此时，变量E的值就是Integer类型,那么我们的类型就可以理解为：
+
+~~~java
+class ArrayList<Integer> { 
+     public boolean add(Integer e) { }
+
+     public Integer get(int index) {  }
+     ...
+}
+~~~
+
+举例自定义泛型类
+
+~~~java
+public class MyGenericClass<MVP> {
+	//没有MVP类型，在这里代表 未知的一种数据类型 未来传递什么就是什么类型
+	private MVP mvp;
+     
+    public void setMVP(MVP mvp) {
+        this.mvp = mvp;
+    }
+     
+    public MVP getMVP() {
+        return mvp;
+    }
+}
+~~~
+
+使用:
+
+~~~java
+public class GenericClassDemo {
+  	public static void main(String[] args) {		 
+         // 创建一个泛型为String的类
+         MyGenericClass<String> my = new MyGenericClass<String>();    	
+         // 调用setMVP
+         my.setMVP("大胡子登登");
+         // 调用getMVP
+         String mvp = my.getMVP();
+         System.out.println(mvp);
+         //创建一个泛型为Integer的类
+         MyGenericClass<Integer> my2 = new MyGenericClass<Integer>(); 
+         my2.setMVP(123);   	  
+         Integer mvp2 = my2.getMVP();
+    }
+}
+~~~
+
+###  含有泛型的方法
+
+定义格式：
+
+~~~
+修饰符 <代表泛型的变量> 返回值类型 方法名(参数){  }
+~~~
+
+例如，
+
+~~~java
+public class MyGenericMethod {	  
+    public <MVP> void show(MVP mvp) {
+    	System.out.println(mvp.getClass());
+    }
+    
+    public <MVP> MVP show2(MVP mvp) {	
+    	return mvp;
+    }
+}
+~~~
+
+使用格式：**调用方法时，确定泛型的类型**
+
+~~~java
+public class GenericMethodDemo {
+    public static void main(String[] args) {
+        // 创建对象
+        MyGenericMethod mm = new MyGenericMethod();
+        // 演示看方法提示
+        mm.show("aaa");
+        mm.show(123);
+        mm.show(12.45);
+    }
+}
+~~~
+
+### 含有泛型的接口
+
+定义格式：
+
+~~~
+修饰符 interface接口名<代表泛型的变量> {  }
+~~~
+
+例如，
+
+~~~java
+public interface MyGenericInterface<E>{
+	public abstract void add(E e);
+	
+	public abstract E getE();  
+}
+~~~
+
+使用格式：
+
+**1、定义类时确定泛型的类型**
+
+例如
+
+~~~java
+public class MyImp1 implements MyGenericInterface<String> {
+	@Override
+    public void add(String e) {
+        // 省略...
+    }
+
+	@Override
+	public String getE() {
+		return null;
+	}
+}
+~~~
+
+此时，泛型E的值就是String类型。
+
+ **2、始终不确定泛型的类型，直到创建对象时，确定泛型的类型**
+
+ 例如
+
+~~~java
+public class MyImp2<E> implements MyGenericInterface<E> {
+	@Override
+	public void add(E e) {
+       	 // 省略...
+	}
+
+	@Override
+	public E getE() {
+		return null;
+	}
+}
+~~~
+
+确定泛型：
+
+~~~java
+/*
+ * 使用
+ */
+public class GenericInterface {
+    public static void main(String[] args) {
+        MyImp2<String>  my = new MyImp2<String>();  
+        my.add("aa");
+    }
+}
+~~~
+
+## 泛型通配符
+
+当使用泛型类或者接口时，传递的数据中，泛型类型不确定，可以通过通配符<?>表示。但是一旦使用泛型的通配符后，只能使用Object类中的共性方法，集合中元素自身方法无法使用。
+
+#### 通配符基本使用
+
+泛型的通配符:**不知道使用什么类型来接收的时候,此时可以使用?,?表示未知通配符。**
+
+此时只能接受数据,不能往该集合中存储数据（不能创建对象使用，只能作为方法的参数使用）。举个例子：
+
+~~~java
+public static void main(String[] args) {
+    Collection<Intger> list1 = new ArrayList<Integer>();
+    getElement(list1);
+    Collection<String> list2 = new ArrayList<String>();
+    getElement(list2);
+}
+public static void getElement(Collection<?> coll){}
+//？代表可以接收任意类型
+~~~
+
+> tips:泛型不存在继承关系 Collection<Object> list = new ArrayList<String>();这种是错误的。
+
+#### 通配符高级使用----受限泛型
+
+之前设置泛型的时候，实际上是可以任意设置的，只要是类就可以设置。但是在JAVA的泛型中可以指定一个泛型的**上限**和**下限**。
+
+**泛型的上限**：
+
+* **格式**： `类型名称 <? extends 类 > 对象名称`
+* **意义**： `只能接收该类型及其子类`
+
+**泛型的下限**：
+
+- **格式**： `类型名称 <? super 类 > 对象名称`
+- **意义**： `只能接收该类型及其父类型`
+
+比如：现已知Object类，String 类，Number类，Integer类，其中Number是Integer的父类
+
+~~~java
+public class Demo06Generic {
+    public static void main(String[] args) {
+        Collection<Integer> list1 = new ArrayList<Integer>();
+        Collection<String> list2 = new ArrayList<String>();
+        Collection<Number> list3 = new ArrayList<Number>();
+        Collection<Object> list4 = new ArrayList<Object>();
+
+        getElement1(list1);
+        //getElement1(list2);//报错
+        getElement1(list3);
+        //getElement1(list4);//报错
+
+        //getElement2(list1);//报错
+        //getElement2(list2);//报错
+        getElement2(list3);
+        getElement2(list4);
+
+        /*
+            类与类之间的继承关系
+            Integer extends Number extends Object
+            String extends Object
+         */
+
+    }
+    // 泛型的上限：此时的泛型?，必须是Number类型或者Number类型的子类
+    public static void getElement1(Collection<? extends Number> coll){}
+    // 泛型的下限：此时的泛型?，必须是Number类型或者Number类型的父类
+    public static void getElement2(Collection<? super Number> coll){}
+}
+~~~
+
 
 
 ```java
@@ -3099,7 +3763,32 @@ public class DemoMain {
 
 PS. 任何一种类型（类/接口）可以作为成员变量类型；接口可以作为返回值或方法的参数
 
+# 十六、时间
 
+java.util.Calendar类:日历类
+
+Calendar类是一个抽象类,里边提供了很多操作日历字段的方法(YEAR、MONTH、DAY_OF_MONTH、HOUR )
+
+Calendar类无法直接创建对象使用,里边有一个静态方法叫getInstance(),该方法返回了Calendar类的子类对象
+
+static Calendar getInstance() 使用默认时区和语言环境获得一个日历。
+
+```java
+public class Demo01Calendar {
+    public static void main(String[] args) {
+        Calendar c = Calendar.getInstance();//多态
+        System.out.println(c);
+    }
+
+}
+```
+
+# 十七、System
+
+`java.lang.System`类中提供了大量的静态方法，可以获取与系统相关的信息或系统级操作，在System类的API文档中，常用的方法有：
+
+- `public static long currentTimeMillis()`：返回以毫秒为单位的当前时间。
+- `public static void arraycopy(Object src, int srcPos, Object dest, int destPos, int length)`：将数组中指定的数据拷贝到另一个数组中。
 
 # 参考资料
 
