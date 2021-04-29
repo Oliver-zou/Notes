@@ -246,7 +246,7 @@ func allocateFlashMem() []byte {
 运行
 
 ```
-go tool pprof -alloc_space test.exe mem.pprof
+go tool pprof -alloc_space test.exe mem.prof
 ```
 
 <div align="center"> <img src="../../pics/16069923458041.png" width="500px"> </div><br>
@@ -264,7 +264,7 @@ go tool pprof -alloc_space test.exe mem.pprof
 在pprof中执行web命名会绘画出下面的树形图，方框越大使用过的内存越多。
 
 ```shell
-$ go tool pprof -http=:8080 cpu.prof
+$ go tool pprof -http=:8080 mem.prof
 // 或
 $ go tool pprof mem.prof 
 $ (pprof) web

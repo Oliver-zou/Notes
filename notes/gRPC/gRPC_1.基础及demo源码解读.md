@@ -1353,7 +1353,7 @@ func (t *http2Server) Write(s *Stream, hdr []byte, data []byte, opts *Options) e
 
 1. [ghz](https://github.com/bojand/ghz)：一款对gRPC接口压测的工具，使用方便
 
-   <div align="center"> <img src="../../pics/16067258811055.png" width="500px"> </div><br>
+   <div align="center"> <img src="../../pics/16067258811055.png" width="800px"> </div><br>
 
 2. [ db2struct](https://github.com/Shelnutt2/db2struct)：从给定的数据库表中生成可用的golang结构
 
