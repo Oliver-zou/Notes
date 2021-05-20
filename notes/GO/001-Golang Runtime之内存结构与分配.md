@@ -718,11 +718,3 @@ Golang源码探索(三) GC的实现原理 https://www.cnblogs.com/zkweb/p/788009
 也谈goroutine调度器 https://tonybai.com/2017/06/23/an-intro-about-goroutine-scheduler/
 
 图解 TCMalloc https://zhuanlan.zhihu.com/p/29216091
-
-等等
-
-# Last
-ppt在我的git code上, 这个仓库放的是我在腾讯做的一些分享, 有计划把Golang Runtime的调度, 内存, GC, 并发工具, 重要数据结构实现都整理分享一下,目前已经做了调度, 内存, GC了. 欢迎star. http://git.code.oa.com/yifhao/myshare
-同时本文的markdown放在了深入golang运行时的仓库中 https://git.code.oa.com/yifhao/dive-into-golang-runtime, 大家一起来补充和完善. 后续golang GC, 调度, 并发, 数据结构的一些分析文章也会包含在里面.
-
-> 本文可保留署名随意引用和转载, 文章中引用的图片归原作者所有.
