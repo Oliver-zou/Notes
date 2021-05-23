@@ -6,7 +6,7 @@
 第一部分介绍一点golang PMG调度模型的背景知识, 以及与内存分配的关系.
 第二部分以new一个对象为引子, 简单介绍golang中的内存分配流程和策略.
 第三部分深入解析go的内存结构和内存分配, 介绍mspan, mcache, mcentral, mheap等数据结构, 小于16Byte, 16Byte-32KB, >=32KB内存分配流程, 以及tiny分配器, fixalloc分配器, stack等几个特殊分配器.
-.
+
 # PMG调度模型简介
 ## PMG简介
 这里简单介绍一下Go的调度模型, 这个调度模型与Go的内存分配结构有很大的联系.
