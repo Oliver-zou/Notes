@@ -1,81 +1,43 @@
-### 1. [JOIN](http://www.codeproject.com/Articles/33052/Visual-Representation-of-SQL-Joins)
+**1.4 引擎**
 
-**`1.INNER JOIN（内连接）`**
+目前广泛使用的是MyISAM和InnoDB两种引擎：
 
-<div align="center"> <img src="../../pics/84a7a2bf45cfe52b2623cffc59e853a8.jpg" width="300px"/> </div><br>
+**MyISAM**
 
-```sql
-SELECT <select_list> 
-FROM Table_A A
-INNER JOIN Table_B B
-ON A.Key = B.Key
-```
+MyISAM引擎是MySQL 5.1及之前版本的默认引擎，它的特点是：
 
-**`2.LEFT JOIN（左连接）`**
+- 不支持行锁，读取时对需要读到的所有表加锁，写入时则对表加排它锁；
+- 不支持事务；
+- 不支持外键；
+- 不支持崩溃后的安全恢复；
+- 在表有读取查询的同时，支持往表中插入新纪录；
+- 支持BLOB和TEXT的前500个字符索引，支持全文索引；
+- 支持延迟更新索引，极大提升写入性能；
+- 对于不会进行修改的表，支持压缩表，极大减少磁盘空间占用。
 
-<div align="center"> <img src="../../pics/a44ab796c630c5e9390dafd5c0eec99c.jpg" width="300px"/> </div><br>
 
-```sql
-SELECT <select_list>
-FROM Table_A A
-LEFT JOIN Table_B B
-ON A.Key = B.Key
-```
 
-**`3.RIGHT JOIN（右连接）`**
+**InnoDB**
 
-<div align="center"> <img src="../../pics/2debd59ca3c68ce754dab7e497e9467b.jpg" width="300px"/> </div><br>
+InnoDB在MySQL 5.5后成为默认索引，它的特点是：
 
-```sql
-SELECT <select_list>
-FROM Table_A A
-RIGHT JOIN Table_B B
-ON A.Key = B.Key
-```
 
-**`4.OUTER JOIN（外连接）`**
 
-<div align="center"> <img src="../../pics/c1a482cfb5b058061c219a8665d0e2c7.jpg" width="300px"/> </div><br>
+- 支持行锁，采用MVCC来支持高并发；
+- 支持事务；
+- 支持外键；
+- 支持崩溃后的安全恢复；
+- 不支持全文索引。
 
-```sql
-SELECT <select_list>
-FROM Table_A A
-FULL OUTER JOIN Table_B B
-ON A.Key = B.Key
-```
 
-**`5.LEFT JOIN EXCLUDING INNER JOIN（左连接-内连接）`**
 
-<div align="center"> <img src="../../pics/9cf5bbfb368cc5177c2e7add676f595d.jpg" width="300px"/> </div><br>
+ps: 据说InnoDB已经在MySQL 5.6.4支持全文索引了
 
-```sql
-SELECT <select_list> 
-FROM Table_A A
-LEFT JOIN Table_B B
-ON A.Key = B.Key
-WHERE B.Key IS NULL
-```
 
-**`6.RIGHT JOIN EXCLUDING INNER JOIN（右连接-内连接）`**
 
-<div align="center"> <img src="../../pics/63b8895e3f9f17a7f93219506269e562.jpg" width="300px"/> </div><br>
+总体来讲，MyISAM适合SELECT密集型的表，而InnoDB适合INSERT和UPDATE密集型的表。
 
-```sql
-SELECT <select_list>
-FROM Table_A A
-RIGHT JOIN Table_B B
-ON A.Key = B.Key
-WHERE A.Key IS NULL
-```
 
-**`7.OUTER JOIN EXCLUDING INNER JOIN（外连接-内连接）`**
 
-<div align="center"> <img src="../../pics/6f6882d7434065e6e8fbb35531ebc35a.jpg" width="300px"/> </div><br>
 
-```sql
-SELECT <select_list>
-FROM Table_A A
-FULL OUTER JOIN Table_B B
-ON A.Key = B.Key
-WHERE A.Key IS NULL OR B.Key IS NULL
-```
+
