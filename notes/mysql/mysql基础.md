@@ -339,21 +339,21 @@ B-tree（B-tree树即B树，B即Balanced，平衡的意思）这棵神奇的树�
 
 <div align="center"> <img src="../../pics/20210527120631.jpg" width="300px"/> </div><br>
 
-B树的搜索，从根结点开始，如果查询的关键字与结点的关键字相等，那么就命中；否则，如果查询关键字比结点关键字小，就进入左儿子；如果比结点关键字大，就进入右儿子；如果左儿子或右儿子的指针为空，则报告找不到相应的关键字；
+二叉搜索树的搜索，从根结点开始，如果查询的关键字与结点的关键字相等，那么就命中；否则，如果查询关键字比结点关键字小，就进入左儿子；如果比结点关键字大，就进入右儿子；如果左儿子或右儿子的指针为空，则报告找不到相应的关键字；
 
-​    如果B树的所有非叶子结点的左右子树的结点数目均保持差不多（平衡），那么B树的搜索性能逼近二分查找；但它比连续内存空间的二分查找的优点是，改变B树结构（插入与删除结点）不需要移动大段的内存数据，甚至通常是常数开销。如：
+​    如果B树的所有非叶子结点的左右子树的结点数目均保持差不多（平衡），那么二叉搜索树的搜索性能逼近二分查找；但它比连续内存空间的二分查找的优点是，改变B树结构（插入与删除结点）不需要移动大段的内存数据，甚至通常是常数开销。如：
 
 <div align="center"> <img src="../../pics/1999974-20200511215608839-28450020.png" width="300px"/> </div><br>
 
 <div align="center"> <img src="../../pics/1999974-20200511215639467-101870345.png" width="300px"/> </div><br>
 
-右边也是一个B树，但它的搜索性能已经是线性的了；同样的关键字集合有可能导致不同的树结构索引；所以，使用B树还要考虑尽可能让B树保持左图的结构，和避免右图的结构，也就是所谓的“平衡”问题；   
+右边也是一个二叉搜索树，但它的搜索性能已经是线性的了；同样的关键字集合有可能导致不同的树结构索引；所以，使用二叉搜索树还要考虑尽可能让二叉搜索树保持左图的结构，和避免右图的结构，也就是所谓的“平衡”问题；   
 
 #### B-树
 
  **什么是B树**
 
-**具体讲解之前，有一点，再次强调下：有的文章里出现的B-树，即为B树。因为B树的原英文名称为B-tree，而国内很多人喜欢把B-tree译作B-树，其实，这是个非常不好的直译，很容易让人产生误解。如人们可能会以为B-树是一种树，而B树又是一种一种树。而事实上是，B-tree就是指的B树。特此说明。**
+**再次强调下：有的文章里出现的B-树，即为B树。因为B树的原英文名称为B-tree，而国内很多人喜欢把B-tree译作B-树，其实，这是个非常不好的直译，很容易让人产生误解。如人们可能会以为B-树是一种树，而B树又是一种一种树。而事实上是，B-tree就是指的B树。特此说明。**
 
 我们知道，B 树是为了磁盘或其它存储设备（用于对外查找）而设计的一种多叉（下面你会看到，相对于二叉，B树每个内结点有多个分支，即多叉）平衡查找树。与红黑树很相似，但在降低磁盘I/0操作方面要更好一些。许多数据库系统都一般使用B树或者B树的各种变形结构。
 
@@ -367,7 +367,7 @@ B树的搜索，从根结点开始，如果查询的关键字与结点的关键�
 
 <div align="center"> <img src="../../pics/16232176442537.png" width="500px"/> </div><br>
 
-相信，从上图你能轻易的看到，一个内结点x若含有n[x]个关键字，那么x将含有n[x]+1个子女。如含有2个关键字D H的内结点有3个子女，而含有3个关键字Q T X的内结点有4个子女。
+从上图你能轻易的看到，一个内结点x若含有n[x]个关键字，那么x将含有n[x]+1个子女。如含有2个关键字D H的内结点有3个子女，而含有3个关键字Q T X的内结点有4个子女。
 
 B树的定义，从下文中，你将看到，或者是用阶，或者是用度，如下段文字所述：
 Unfortunately, the literature on [B-trees](http://en.wikipedia.org/wiki/Btree#Technical_description) is not uniform in its use of terms relating to B-Trees. (Folk & Zoellick 1992, p. 362) Bayer & McCreight (1972), Comer (1979), and others define the order of B-tree as the minimum number of keys in a non-root node. Folk & Zoellick (1992) points out that terminology is ambiguous because the maximum number of keys is not clear. An order 3 B-tree might hold a maximum of 6 keys or a maximum of 7 keys. (Knuth 1998,TAOCP p. 483) avoids the problem by defining the order to be maximum number of children (which is one more than the maximum number of keys).
