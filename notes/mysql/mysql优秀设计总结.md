@@ -98,7 +98,7 @@ select wait_for_executed_gtid_set(gtid_set, );
 
 2. redo log快被写满时。回顾上一节里介绍redo log时提到的，redo log的空间类似一个环，所以当redo log被写满时，就会从头开始覆盖之前的redo log数据，此时如果这部分的redo log数据还没有同步到磁盘，就相当于数据丢失了。InnoDB为了解决这个问题，使用了write pos和checkpoint两个标记为来控制redo log日志的更新覆盖。write pos是当前记录的位置，也就是要这次操作要开始写redo log的位置；checkpoint是redo log数据已经同步到磁盘的位置。如果write pos追上了checkpoint，此时就需要等redo log同步新的数据到磁盘，把checkpoint往后推进之后，才能继续接收新的数据。
 
-<div align="center"> <img src="../../pics/598fa74565e572d4f7fcb9f416913_w1142_h856.png" width="500px"/> </div><br>
+<div align="center"> <img src="../../pics/598fa74565e572d4f7fcb9f416913_w1142_h856-4199582.png" width="500px"/> </div><br>
 
 3. 内存快被写满时。我们可以假设，如果是我们自己来设计MySQL，为了更快地读取数据，我们一定会把每次更新写入“缓存”来提高读取这些数据的速度，InnoDB也是这也想的，所以每次更新redo log之后，会把数据立刻更新到内存对应的数据页中，之后我们读数据也是从内存读。此时内存数据页的数据是不同于磁盘的，我们称之为“脏页”。当内存快被写满时，为了加载新的数据页，就会淘汰一些旧的数据页，如果旧的数据页恰好是脏页，此时就需要先将脏页flush到磁盘之后，再执行淘汰命令。写到这里，有的同学可能会想到，既然内存页也有同步到磁盘的过程，那么时候还需要在redo log write pos追上checkpoint时执行数据同步的操作呢？答案是需要的。这也是为什么redo log 作为InnoDB crash-safe保障的手段，试想如果没有redo log，如果刷脏页的过程还没执行完毕，设备就crash了，此时内存的数据也就全部丢失了（严谨一点，这里我再补充说明一下，redo log和binlog本身也是需要持久化的，MySQL在更新这两个日志时，也会根据参数判断是否写到cache即可，所以理论上，如果你设置的redo log和binlog持久化的策略是比较lazy的，那么也可能存在断电丢失日志数据的场景，如何设置redo log和binlog持久化的参数，需要考虑性能和数据一致性之间的平衡）。
 
