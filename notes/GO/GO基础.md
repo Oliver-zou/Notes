@@ -493,7 +493,95 @@ func makemap(t *maptype, hint int64, h *hmap, bucket unsafe.Pointer) *hmap {
 
  这一点与python的装饰器的原理类似，区分**函数（类型）**与**函数调用（执行函数体的内容）**的区别
 
-**1.1函数的类型转换**
+**1.1 什么是函数签名**
+
+**函数类型** 又叫 **函数签名** ， **一个函数的类型**就是函数定义首行去掉函数名、参数名和{，可以 使用 fmt.Printf 的”%T”格式化参数**打印函数的类型**。
+
+**1.2 什么是函数类型相同**
+
+两个函数类型相同的条件是:
+
+拥有相同的**形参列表**和**返回值列表**(列表元素的次序、个数和类型都相同)，形参名可以不同 。
+
+以下 3 个函数的函数类型完全一样。
+
+```go
+func add (a , b int) int { return a + b }
+func sub (c int, d int) int { return c - d }
+func mul (e int, f int) int { return e * f }
+```
+
+eg.
+
+```go
+package main
+import "fmt"
+
+func add(a, b int) int     { return a + b }
+func sub(c int, d int) int { return c - d }
+func mul(e int, f int) int { return e * f }
+
+func main() {
+	fmt.Printf("%T\n", add)
+	fmt.Printf("%T\n", sub)
+	fmt.Printf("%T\n", mul)
+}
+==============
+func(int, int) int
+func(int, int) int
+func(int, int) int
+```
+
+**1.3 通过Type定义函数类型**
+
+搞明白了什么是函数类型相同之后，接下来了解通过Type定义函数类型。
+
+通过 type 可以定义函数类型，格式如下：
+
+```go
+type typeName func(arguments) retType
+```
+
+函数类型也是一种类型，故可以将其**定义为函数入参**，在 go 语言中**函数名**可以看做是**函数类型的常量**，所以我们可以直接将函数名作为参数传入的函数中。
+
+eg.
+
+```go
+package main
+
+import "fmt"
+
+func add(a, b int) int {
+	return a + b
+}
+
+//sub作为函数名可以看成是 op 类型的常量
+func sub(a, b int) int {
+	return a - b
+}
+
+// ***************************
+// 定义函数类型 op
+// ***************************
+type op func(a, b int) int
+
+// ***************************
+// 形参指定传入参数为函数类型op
+// ***************************
+func Oper(fu op, a, b int) int {
+	return fu(a, b)
+}
+
+func main() {
+	//在go语言中函数名可以看做是函数类型的常量，所以我们可以直接将函数名作为参数传入的函数中。
+	aa := Oper(add, 1, 2)
+	fmt.Println(aa)
+	bb := Oper(sub, 1, 2)
+	fmt.Println(bb)
+}
+```
+
+**1.4 函数的类型转换**
 
 Go 语言的类型转换基本格式如下：
 
@@ -502,6 +590,8 @@ type_name(expression)
 ```
 
 下面是例子：
+
+本例声明了一个 CalculateType 函数类型，并实现 Serve() 方法，并将拥有相同参数的 add 和 mul 强制转换成 CalculateType 函数类型，同时这两个函数都拥有了 CalculateType 函数类型的 Serve() 方法。
 
 ```go
 package main	
@@ -540,9 +630,9 @@ func main() {
 // 我是一个函数类型
 ```
 
-如上，声明了一个 CalculateType 函数类型，并实现 Serve() 方法，并将拥有相同参数的 add 和 mul 强制转换成 CalculateType 函数类型，同时这两个函数都拥有了 CalculateType 函数类型的 Serve() 方法。
+**1.5函数作参数传递**（函数指针）
 
-**1.2函数作参数传递**
+如下示例，Calculate 的 f 参数类型为 CalculateType，add 和 mul 函数具有和 CalculateType 函数类型相同的参数和返回值，因此可以将 add 和 mul 函数作为参数传入 Calculate 函数中。
 
 ```go
 package main
@@ -589,9 +679,7 @@ func(int, int) int
 0x49e0c0
 ```
 
-如上例子，Calculate 的 f 参数类型为 CalculateType，add 和 mul 函数具有和 CalculateType 函数类型相同的参数和返回值，因此可以将 add 和 mul 函数作为参数传入 Calculate 函数中。
-
-net/http 包源码例子：
+**net/http 包源码例子：**
 
 ```go
 // HandleFunc registers the handler function for the given pattern
@@ -676,13 +764,13 @@ func (v Value) Interface() (i interface{})
 var i interface{} = (v's underlying value)
 ```
 
-**1.3 functional options API**
+**1.6 functional options API**
 
 将配置项改为可变参数，传入修改具体配置的函数，使用函数的好处是配置项完全自由，并且对默认值友好，因为不传的话就是用默认值，传入配置函数就使用传入的参数。也就是“省略号”的用法。
 
 
 
-## 2.for的用法
+## 2.if的用法
 
 像for一样，if语句可以从简短语句开始，然后在条件之前执行。语句声明的变量仅在范围内，直到if结束。
 
@@ -826,6 +914,10 @@ var XXX interface{} //
    ```
 
 5. 主线程 可通过 `var wg sync.WaitGroup()` 管理多个协程的并发问题； 
+
+6. nil 还可以作为默认值
+
+7. interface 在使用接口时要注意，只有接口的类型和值都是 nil 时，这个接口才等于 nil，否则不相等。
 
 
 

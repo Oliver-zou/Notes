@@ -1,3 +1,18 @@
+## 一、服务操作
+
+```shell
+-- 查看mysql配置路径
+mysql --verbose --help|grep -A 1 'Default options'
+
+-- 重启服务
+systemctl restart mariadb.service
+service mysqld restart
+```
+
+
+
+## 二、CRUD操作
+
 ```sql
 /* Windows服务 */
 -- 启动MySQL
@@ -1045,9 +1060,9 @@ OPTIMIZE [LOCAL | NO_WRITE_TO_BINLOG] TABLE tbl_name [, tbl_name] ...
 7. 清除已有语句：\c
 ```
 
+## 三、特性
 
-
-###  [JOIN](http://www.codeproject.com/Articles/33052/Visual-Representation-of-SQL-Joins)
+###  3.1[JOIN](http://www.codeproject.com/Articles/33052/Visual-Representation-of-SQL-Joins)
 
 **`1.INNER JOIN（内连接）`**
 
