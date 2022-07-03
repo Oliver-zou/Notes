@@ -323,7 +323,7 @@ W:因为每一条记录都是从用户请求传递进来的，每条记录在按
 
 到此我们尝试回答**为什么选择 b+树作为存储引擎索引结构**这个问题就回答完毕了。我们用一张图来总结下：
 
-<div align="center"> <img src="../../pics/982ca0df98bc448dd3674d5037fb720c.jpg" width="500px"/> </div><br>
+<div align="center"> <img src="../../pics/982ca0df98bc448dd3674d5037fb720c.jpg" width="800px"/> </div><br>
 
 最后我们看一下数据结构的 b+树长啥样，我们磁盘+内存中的 b+树又长啥样。
 

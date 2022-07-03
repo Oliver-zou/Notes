@@ -26,7 +26,7 @@
 
 **RPC**(Remote Procedure Call)：远程过程调用，是一种计算机通信协议。该协议允许运行于一台计算机的程序调用另一台计算机的子程序：计算机A提供一个服务，计算机B可以像调用本地服务那样调用计算机A的服务，在该过程中参数的传递是一个序列化和反序列化的过程。
 
-<div align="center"> <img src="../../pics/16067222356178.png" width="500px"> </div><br>
+<div align="center"> <img src="../../pics/16067222356178.png" width="800px"> </div><br>
 
 **1.2 RPC与HTTP的对比**
 
