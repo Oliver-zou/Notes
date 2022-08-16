@@ -1144,3 +1144,30 @@ ON A.Key = B.Key
 WHERE A.Key IS NULL OR B.Key IS NULL
 ```
 
+## 四、疑难杂症
+
+### 4.1在mysql中清空或删除大表
+
+**直接drop table**
+
+1、直接删可能导致瞬间IO过高，影响其他正常访问
+
+2、要有备份和恢复意识，万一还要用，至少还有个保底
+
+3、即使真的不用了，也不建议直接drop，drop直接灰飞烟灭，没得反悔，表上的所有附加属性一起消失，包括索引、触发器、约束等等。
+
+数据清理其实和机器下线是一样的，不要直接重装，先隔离，再备份&卸载，最后再重装，给自己留一个后悔的余地。
+
+**硬链接方式删表，或者先rename然后分批次delete最好。**（truncate 大表可能有性能影响）
+
+**rename**
+
+1、创建一个表结构一样的临时表， create table a like b ;
+2、rename 表名，rename table b to c,a to b ;
+3、有需要的话把数据备份到异地，再慢慢删数据，避免影响IO ；
+
+**硬链接方式删表**
+
+1.建立idb文件的硬链接：ln test.idb test.idb.link
+2.drop table test; # 这个操作很快
+3.删除数据文件，有个限速删除工具，bt-rm限制IO速率进行删除；
